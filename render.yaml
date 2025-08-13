@@ -11,12 +11,12 @@ services:
       - key: FRONTEND_ORIGIN
         fromService:
           name: faithchat-web
-          type: static_site
+          type: static
           property: url
     healthCheckPath: /healthz
     autoDeploy: true
 
-  - type: static_site
+  - type: web
     name: faithchat-web
     rootDir: frontend
     buildCommand: npm ci && npm run build
@@ -25,5 +25,5 @@ services:
       - key: NEXT_PUBLIC_BACKEND_URL
         fromService:
           name: faithchat-api
-          type: web
+          type: static
           property: url
