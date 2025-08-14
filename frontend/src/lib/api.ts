@@ -1,15 +1,16 @@
-export type Msg = { role: "user" | "assistant"; content: string };
+export type Msg = { role: "user"|"assistant"; content: string };
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL!;
-export async function* streamChat(messages: Msg[]) {
-  const res = await fetch(`${BACKEND}/chat`, {
+export async function* streamChat(
+  backendUrl: string,
+  messages: Msg[]
+) {
+  const res = await fetch(`${backendUrl}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
   });
-  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-
-  const reader = res.body.getReader();
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
   while (true) {
