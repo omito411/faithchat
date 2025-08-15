@@ -1,12 +1,13 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  {
-    auth: {
-      persistSession: true, // keeps the user signed in across reloads
-      autoRefreshToken: true,
-    },
-  }
-)
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!url || !key) {
+  // This will show up in the browser console in prod
+  console.error("Supabase env vars missing: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
+}
+
+export const supabase = createClient(url ?? "http://localhost", key ?? "anon", {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
