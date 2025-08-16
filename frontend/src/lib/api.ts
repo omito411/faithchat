@@ -1,16 +1,14 @@
-export type Msg = { role: "user"|"assistant"; content: string };
+export type Msg = { role: "user" | "assistant"; content: string };
 
-export async function* streamChat(
-  backendUrl: string,
-  messages: Msg[]
-) {
+export async function* streamChat(backendUrl: string, messages: Msg[]) {
   const res = await fetch(`${backendUrl}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const reader = res.body!.getReader();
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
   while (true) {
@@ -23,7 +21,9 @@ export async function* streamChat(
       if (!f.startsWith("data:")) continue;
       const payload = f.slice(5);
       if (payload === "[DONE]") return;
-      if (payload.startsWith("__ERROR__")) throw new Error(payload.replace("__ERROR__ ", ""));
+      if (payload.startsWith("__ERROR__")) {
+        throw new Error(payload.replace("__ERROR__ ", ""));
+      }
       yield payload;
     }
   }
