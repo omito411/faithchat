@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 python-multipart
-pydantic>=2
+pydantic[email]>=2
 python-jose[cryptography]
 passlib[bcrypt]
 openai>=1.0.0
