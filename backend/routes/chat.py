@@ -1,45 +1,52 @@
-# routes/chat.py
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import StreamingResponse
-from supabase import create_client
+from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel
+from openai import OpenAI
+from app.routes.auth import require_user
 import os
-import openai
 
 router = APIRouter()
+SYSTEM_PROMPT = (
+    "You are a conservative Baptist biblical counselor. For every user question:\n"
+    "1. Answer using only the New King James Version (NKJV) Bible.\n"
+    "2. Provide a modern-language explanation that is biblically accurate and practical.\n"
+    "3. Include a short, relevant quote or insight from Charles Spurgeon where applicable.\n"
+    "Do not use other theologians. If Scripture is silent, admit it and apply general biblical principles.\n"
+    "Speak clearly, compassionately, and with reverence for truth."
+)
 
-# Init Supabase client
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
+class ChatInput(BaseModel):
+    message: str
+    history: list[dict] = []  # optional past messages [{role, content}]
 
-# Init OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+class ChatOutput(BaseModel):
+    reply: str
 
-@router.post("/chat")
-async def chat_endpoint(request: Request):
-    body = await request.json()
-    token = request.headers.get("Authorization")
+@router.post("", response_model=ChatOutput)
+def chat(input_data: ChatInput, authorization: str | None = Header(default=None)):
+    # Simple bearer token check
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
+    user_email = require_user(token)
 
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing token")
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # Verify token with Supabase
-    user = supabase.auth.get_user(token.replace("Bearer ", ""))
-    if not user or not user.user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    # Append short conversation history (optional)
+    for m in input_data.history[-10:]:
+        if "role" in m and "content" in m:
+            messages.append({"role": m["role"], "content": m["content"]})
 
-    messages = body.get("messages")
-    if not messages:
-        raise HTTPException(status_code=400, detail="Missing messages")
+    # Add user message
+    messages.append({"role": "user", "content": input_data.message})
 
-    # OpenAI streaming response
-    def generate():
-        completion = openai.ChatCompletion.create(
+    try:
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            stream=True
+            temperature=0.3,
         )
-        for chunk in completion:
-            if chunk["choices"][0]["delta"].get("content"):
-                yield f"data:{chunk['choices'][0]['delta']['content']}\n\n"
-        yield "data:[DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+        reply = resp.choices[0].message.content
+        return ChatOutput(reply=reply)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
