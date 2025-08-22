@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
-from app.routes.auth import require_user
+from .auth import require_user
 import os
 
 router = APIRouter()
