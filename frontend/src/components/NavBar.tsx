@@ -1,22 +1,15 @@
 "use client";
-
 import Link from "next/link";
-import { useAuth } from "@/components/AuthContext";
 
 export default function NavBar() {
-  const { token, clearToken } = useAuth();
-
   return (
-    <header className="border-b bg-white">
-      <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-3">
-        <Link href="/" className="font-semibold">FaithChat</Link>
-        <nav className="flex gap-3 items-center">
-          <Link href="/chat" className="text-sm">Chat</Link>
-          {token ? (
-            <button onClick={clearToken} className="text-sm px-3 py-1 rounded-xl border">Logout</button>
-          ) : (
-            <Link href="/login" className="text-sm px-3 py-1 rounded-xl border">Login</Link>
-          )}
+    <header className="bg-ink-900/40 backdrop-blur border-b border-white/10">
+      <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <Link href="/" className="font-semibold text-white">FaithChat</Link>
+        <nav className="flex gap-4">
+          <Link href="/chat" className="text-sm text-white/80 hover:text-white">Chat</Link>
+          <Link href="/donate" className="text-sm text-white/80 hover:text-white">Donate</Link>
+          <Link href="/login" className="text-sm text-white/80 hover:text-white">Login</Link>
         </nav>
       </div>
     </header>
