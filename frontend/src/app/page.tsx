@@ -1,30 +1,44 @@
-import Link from "next/link";
+"use client";
 
-import Button from "@/components/Button";
-import Coverflow from "@/components/Coverflow";
+import Link from "next/link";
+import Image from "next/image";
+import "./home.css";
 
 export default function Home() {
   return (
-    <>
-      {/* HERO */}
-      <section className="curve-bottom bg-brand-500">
-        <div className="max-w-6xl mx-auto px-4 py-20">
-          <h1 className="text-3xl md:text-5xl font-bold text-white">FaithChat</h1>
-          <p className="mt-4 max-w-2xl text-white/90">
-            Ask anything about faith, life, or the Bible — NKJV‑only answers with clear explanation and a Spurgeon insight.
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Button href="/chat">Open Chat</Button>
-            <Button href="/donate" variant="outline">Donate</Button>
+    <div className="home-app">
+      {/* HERO WRAPPER */}
+      <section className="home-hero-wrap">
+        <div className="container">
+          <div className="home-hero">
+            {/* LEFT: Text content */}
+            <div className="home-hero-content">
+              <h1>
+                Ask—learn—grow in God’s <span className="home-nowrap">Word.</span>
+              </h1>
+              <p className="home-lede">
+                Bible‑first answers (NKJV) with clear, pastoral explanations — plus
+                Spurgeon quotes when helpful. Ask anything about faith, life, or the Bible.
+              </p>
+              <div className="home-actions">
+                <Link href="/chat" className="home-btn home-btn-primary">Open Chat</Link>
+                <Link href="/donate" className="home-btn home-btn-ghost">Donate</Link>
+              </div>
+            </div>
+
+            {/* RIGHT: Figure */}
+            <div className="home-hero-figure">
+              <Image
+                src="/assets/hero-man2.png"
+                alt="Person reading the Bible"
+                width={430}
+                height={620}
+                priority
+              />
+            </div>
           </div>
         </div>
       </section>
-
-      {/* COVERFLOW */}
-      <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-xl md:text-2xl font-semibold text-white mb-6">Explore</h2>
-        <Coverflow />
-      </section>
-    </>
+    </div>
   );
 }

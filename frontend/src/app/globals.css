@@ -36,34 +36,20 @@ html, body {
   box-shadow: 0 -20px 40px rgba(0,0,0,0.2) inset;
 }
 
-/* 3D coverflow core styles (Tailwind handles most spacing/typography) */
-.coverflow {
-  perspective: 1200px;
-  transform-style: preserve-3d;
+/* ==== Donate route: hide the global site header/nav; keep the page .appbar ==== */
+body.route-donate :is(
+  .global-nav,
+  .header.navbar,
+  .navbar,
+  header.site-nav,
+  [data-global="header"],
+  nav[aria-label="Global"],
+  .top-nav
+) {
+  display: none !important;
 }
-.coverflow-track {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  transform-style: preserve-3d;
-  transition: transform 450ms ease, opacity 300ms ease;
-}
-.coverflow-card {
-  position: relative;
-  width: 280px;
-  height: 180px;
-  border-radius: 1rem;
-  overflow: hidden;
-  background: #111318;
-  box-shadow: 0 15px 40px rgba(0,0,0,0.25);
-  transform-origin: center center;
-  transition: transform 450ms ease, opacity 300ms ease, filter 300ms ease;
-}
-.coverflow-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.coverflow-card.dim {
-  filter: grayscale(0.25) brightness(0.85);
-}
+
+
+
+
+

@@ -1,0 +1,115 @@
+/* ==== Theme (scoped to register page) ==== */
+.register-page {
+  --bg: #fbf5ec;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --muted: #475569;
+  --brand: #1F3A77;
+  --border: #ece7de;
+  --shadow: 0 12px 30px rgba(0,0,0,.08);
+  --radius: 14px;
+}
+
+/* Base layout */
+.register-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 120px;
+  padding-bottom: 40px;
+  text-align: center;
+}
+
+/* Card */
+.register-card {
+  margin: 0 auto;
+  width: min(520px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 26px 26px 22px;
+  text-align: left;
+}
+
+.register-title {
+  margin: 4px 0 18px;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+/* Form */
+.register-form { display: grid; gap: 12px; }
+.register-label { font-weight: 600; }
+
+.register-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  outline: none;
+  background: #fff;
+}
+.register-input:focus {
+  border-color: #d6cfc4;
+  box-shadow: 0 0 0 3px rgba(31,58,119,.12);
+}
+
+.register-input-wrap { position: relative; }
+.register-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; fill: #9aa4b2; pointer-events: none;
+}
+
+/* Links & text */
+.register-link { color: #2b5be9; font-weight: 600; text-decoration: none; }
+.register-link:hover { text-decoration: underline; }
+.register-link-strong { color: #1e4fdb; font-weight: 700; text-decoration: none; }
+.register-link-strong:hover { text-decoration: underline; }
+
+.register-muted { color: var(--muted); text-align: center; }
+
+/* Button */
+.register-btn {
+  margin-top: 8px;
+  width: 100%;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: filter .15s, transform .1s;
+}
+.register-btn:hover { filter: brightness(1.05); }
+.register-btn:active { transform: translateY(1px); }
+
+/* Separator */
+.register-sep {
+  margin: 16px 0 6px;
+  border: none; height: 1px; background: var(--border);
+}
+
+/* Footer note */
+.register-footnote {
+  color: var(--muted);
+  margin: 22px auto 0;
+  max-width: 56ch;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .register-page { padding-top: 96px; }
+  .register-card { padding: 22px 18px 18px; }
+}
+
+/* Container utility (matches your site) */
+.container { max-width: 1100px; margin-inline: auto; padding-inline: 20px; }

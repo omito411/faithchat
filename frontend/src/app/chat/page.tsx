@@ -1,96 +1,280 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-// if you have the @ alias set up, prefer "@/components/..."
-// otherwise keep as "components/..."
-import { useAuth } from "@/components/AuthContext";
-import ChatBubble from "@/components/ChatBubble";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/components/AuthContext"; // <-- your existing context
+import "./chat.css";
 
-// ✅ Strong type for chat messages
-type ChatMsg = {
-  role: "user" | "assistant";
-  content: string;
-};
+type Msg = { role: "user" | "bot"; content: string; ts: number };
+type Thread = { id: string; title: string; createdAt: number; messages: Msg[] };
+
+const LS_KEY = "faithchat_threads_v1";
 
 export default function ChatPage() {
-  const { token } = useAuth();
-  const [history, setHistory] = useState<ChatMsg[]>([]);
+  const { token } = useAuth(); // <-- get JWT (or null)
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const viewRef = useRef<HTMLDivElement>(null);
+  const [typing, setTyping] = useState(false);
 
-  const send = async () => {
-    if (!input.trim()) return;
+  const chatWindowRef = useRef<HTMLDivElement | null>(null);
 
-    // ✅ Lock the literal so TS doesn't widen to `string`
-    const newHistory: ChatMsg[] = [...history, { role: "user" as const, content: input }];
-
-    setHistory(newHistory);
-    setInput("");
-    setLoading(true);
-
+  // ---------- storage ----------
+  useEffect(() => {
     try {
-      const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-      const { data } = await axios.post(
-        base + "/chat",
-        { message: input, history: newHistory },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setHistory([...newHistory, { role: "assistant" as const, content: data.reply as string }]);
-    } catch (e: any) {
-      setHistory([
-        ...newHistory,
-        { role: "assistant" as const, content: "Error: " + (e?.response?.data?.detail || e.message) }
-      ]);
-    } finally {
-      setLoading(false);
-      setTimeout(() => viewRef.current?.scrollIntoView({ behavior: "smooth" }), 10);
-    }
-  };
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { threads?: Thread[]; activeId?: string };
+        if (Array.isArray(parsed.threads)) setThreads(parsed.threads);
+        setActiveId(parsed.activeId ?? parsed.threads?.[0]?.id ?? null);
+      } else {
+        const t = makeThread("New conversation");
+        t.messages.push({
+          role: "bot",
+          content: "Hello 👋 I’m FaithChat AI. Ask me anything about faith, life, or the Bible.",
+          ts: Date.now(),
+        });
+        setThreads([t]);
+        setActiveId(t.id);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    if (!token) {
-      window.location.href = "/login";
-    }
+    localStorage.setItem(LS_KEY, JSON.stringify({ threads, activeId }));
+  }, [threads, activeId]);
+
+  const activeThread = useMemo(
+    () => threads.find((t) => t.id === activeId) ?? null,
+    [threads, activeId]
+  );
+
+  // redirect if unauthenticated (mirrors your older page)
+  useEffect(() => {
+    if (token === null || token === undefined) return; // wait for context
+    if (!token) window.location.href = "/login";
   }, [token]);
 
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      const el = chatWindowRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  };
+
+  // ---------- helpers ----------
+  function makeThread(title = "New conversation"): Thread {
+    return {
+      id: "t_" + cryptoRandom(),
+      title,
+      createdAt: Date.now(),
+      messages: [],
+    };
+  }
+
+  function createThread() {
+    const t = makeThread("New conversation");
+    t.messages.push({
+      role: "bot",
+      content: "Hello 👋 I’m FaithChat AI. Ask me anything about faith, life, or the Bible.",
+      ts: Date.now(),
+    });
+    setThreads((prev) => [t, ...prev]);
+    setActiveId(t.id);
+  }
+
+  function setActive(id: string) {
+    setActiveId(id);
+  }
+
+  function updateThreadTitleFromFirstUserMsg(t: Thread) {
+    const firstUser = t.messages.find((m) => m.role === "user");
+    if (firstUser) t.title = trimTitle(firstUser.content);
+  }
+
+  function appendMessage(role: Msg["role"], content: string) {
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id !== activeId) return t;
+        const next = { ...t, messages: [...t.messages, { role, content, ts: Date.now() }] };
+        if (role === "user" && t.messages.filter((m) => m.role === "user").length === 0) {
+          updateThreadTitleFromFirstUserMsg(next);
+        }
+        return next;
+      })
+    );
+  }
+
+  // ---------- backend call (replaces the fake bot) ----------
+  async function getBotReply(userText: string, thread: Thread) {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+    // Map our UI history (user|bot) -> API history (user|assistant)
+    const apiHistory = thread.messages.map((m) => ({
+      role: m.role === "bot" ? ("assistant" as const) : ("user" as const),
+      content: m.content,
+    }));
+
+    const res = await fetch(base + "/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        message: userText,
+        history: [...apiHistory, { role: "user", content: userText }],
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await safeText(res);
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+
+    const data = (await res.json()) as { reply?: string };
+    return (data.reply ?? "").trim() || "Sorry — I couldn’t generate a reply.";
+  }
+
+  // ---------- events ----------
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || !activeThread) return;
+
+    appendMessage("user", text);
+    setInput("");
+    setTyping(true);
+    // typing stub
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.id === activeId ? { ...t, messages: [...t.messages, { role: "bot", content: "…", ts: Date.now() }] } : t
+      )
+    );
+    scrollToBottom();
+
+    try {
+      const reply = await getBotReply(text, {
+        ...activeThread,
+        messages: activeThread.messages, // snapshot
+      });
+
+      // remove typing stub (last bot "…")
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === activeId
+            ? {
+                ...t,
+                messages: t.messages.filter(
+                  (m, i, arr) => !(m.role === "bot" && m.content === "…" && i === arr.length - 1)
+                ),
+              }
+            : t
+        )
+      );
+
+      appendMessage("bot", reply);
+      scrollToBottom();
+    } catch (err: any) {
+      // remove typing stub
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === activeId
+            ? {
+                ...t,
+                messages: t.messages.filter(
+                  (m, i, arr) => !(m.role === "bot" && m.content === "…" && i === arr.length - 1)
+                ),
+              }
+            : t
+        )
+      );
+      appendMessage("bot", "Error: " + (err?.message || "request failed"));
+    } finally {
+      setTyping(false);
+    }
+  }
+
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">📖 FaithChat</h1>
-      <p className="text-sm text-neutral-600">
-        Ask anything about faith, life, or the Bible — NKJV-only answers with clear explanation and a Spurgeon insight.
-      </p>
+    <main className="chat-app chat-container">
+      {/* SIDEBAR */}
+      <aside className="chat-sidebar" aria-label="Previous Conversations">
+        <h2>Previous Conversations</h2>
+        <button onClick={createThread} className="chat-btn-new">New Chat</button>
+        <div className="chat-thread-list" role="listbox" aria-label="Conversation list">
+          {threads.map((t) => (
+            <button
+              key={t.id}
+              className={`chat-thread${t.id === activeId ? " active" : ""}`}
+              role="option"
+              onClick={() => setActive(t.id)}
+              title={t.title}
+            >
+              <span className="title">{t.title || "New conversation"}</span>
+              <span className="meta">{new Date(t.createdAt).toLocaleDateString()}</span>
+            </button>
+          ))}
+        </div>
+      </aside>
 
-      <div className="space-y-3 border rounded-2xl p-4 bg-white">
-        {history.length === 0 && (
-          <div className="text-sm text-neutral-600">
-            Start the conversation below. Examples: “What does Proverbs 3:5–6 teach for anxiety?”
-          </div>
-        )}
-        {history.map((m, i) => (
-          <ChatBubble key={i} role={m.role} content={m.content} />
-        ))}
-        <div ref={viewRef} />
-      </div>
+      {/* DIVIDER */}
+      <div className="chat-divider" aria-hidden="true" />
 
-      <div className="flex gap-2">
-        <input
-          className="flex-1 px-3 py-2 border rounded-xl"
-          placeholder="Ask a question or follow-up..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-        />
-        <button
-          onClick={send}
-          disabled={loading}
-          className="px-4 py-2 rounded-xl bg-neutral-900 text-white disabled:opacity-50"
+      {/* CHAT PANEL */}
+      <section className="chat-panel">
+        <header className="chat-head">
+          <h1>📖 <span className="title">FaithChat</span></h1>
+          <p className="lede">
+            Ask anything about faith, life, or the Bible — NKJV‑only answers with clear
+            explanation and a Spurgeon insight.
+          </p>
+        </header>
+
+        <div
+          id="chatWindow"
+          ref={chatWindowRef}
+          className="chat-window"
+          aria-live="polite"
+          aria-relevant="additions"
         >
-          {loading ? "Searching the Scriptures..." : "Send"}
-        </button>
-      </div>
-    </section>
+          {activeThread?.messages.map((m, idx) => (
+            <div key={m.ts + "-" + idx} className={`chat-message ${m.role === "user" ? "user" : "bot"}`}>
+              <div className="bubble">{m.content}</div>
+            </div>
+          ))}
+        </div>
+
+        <form className="chat-form" autoComplete="off" onSubmit={onSubmit}>
+          <input
+            id="userInput"
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder='Start the conversation. Example: "What does Proverbs 3:5–6 teach for anxiety?"'
+            aria-label="Your message"
+            required
+          />
+          <button type="submit" className="send" disabled={typing}>Send</button>
+        </form>
+
+        <footer className="chat-foot">
+          Built with ❤️ • NKJV Scripture references only • Spurgeon quotes when helpful
+        </footer>
+      </section>
+    </main>
   );
+}
+
+/* ---------- utils ---------- */
+function cryptoRandom() {
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const buf = new Uint32Array(1);
+    window.crypto.getRandomValues(buf);
+    return buf[0].toString(36);
+  }
+  return Math.random().toString(36).slice(2);
+}
+const trimTitle = (s: string) => (s.length > 34 ? s.slice(0, 31) + "…" : s);
+
+async function safeText(res: Response) {
+  try { return await res.text(); } catch { return ""; }
 }

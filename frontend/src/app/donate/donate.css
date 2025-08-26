@@ -1,0 +1,191 @@
+/* ===== Theme ===== */
+:root{
+  --bg:#f6f3ef;       /* warm light background */
+  --ink:#0a0a0a;      /* default text */
+  --ink-dim:#d9d9d9;  /* body text inside black card */
+  --brand:#1a2c5b;    /* deep blue brand */
+  --card:#000;        /* black curved section */
+  --shadow-1:0 10px 30px rgba(0,0,0,.28);
+  --shadow-2:0 4px 14px rgba(0,0,0,.18);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.app{min-height:100dvh;display:flex;flex-direction:column}
+
+/* Hide any global nav just in case */
+[data-route="donate-root"] .global-nav,
+[data-route="donate-root"] .header.navbar,
+[data-route="donate-root"] .navbar,
+[data-route="donate-root"] header.site-nav,
+[data-route="donate-root"] nav[aria-label="Global"],
+[data-route="donate-root"] .top-nav{display:none!important}
+
+[data-route="donate-root"]{padding-top:0!important;margin-top:0!important}
+
+/* ===== Top bar (only the back button now) ===== */
+.appbar{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; background:transparent;
+}
+.appbar .back{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:6px 4px;cursor:pointer}
+.appbar .spacer{flex:1}
+
+/* ===== HERO ===== */
+.hero{position:relative;overflow:visible}
+
+/* Light area */
+.hero-top{
+  position:relative;
+  background:var(--bg);
+  padding:22px 20px 180px;   /* bottom room for the swoop */
+  min-height:260px;
+}
+
+/* Brand — CENTERED */
+.brand{
+  margin:8px auto 0;        /* center block */
+  font-weight:900;
+  color:var(--brand);
+  font-size:clamp(36px,6.5vw,64px);
+  line-height:1;
+  text-align:center;
+  max-width:14ch;
+}
+
+/* Transparent figure on right (desktop/tablet) */
+.hero-top::after{
+  content:"";
+  position:absolute;
+  right:clamp(10px,5vw,40px);
+  top:clamp(28px,6vw,60px);
+  width:clamp(230px,31vw,360px);
+  height:auto;
+  aspect-ratio:3/4;
+  background:url("/assets/hero-man2.png") no-repeat right bottom;
+  background-size:contain;
+  z-index:3;
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.25));
+  pointer-events:none;
+}
+
+/* Use SVG curve and lift it up to “hug” the figure */
+.curve{
+  display:block;
+  width:100%;
+  height:180px;        /* taller wave */
+  margin-top:-135px;   /* raise the black swoop */
+  z-index:2;
+}
+.curve path{fill:var(--card)}
+
+/* ===== Black content section ===== */
+.hero-card{
+  position:relative;
+  z-index:1;           /* under the figure */
+  background:var(--card);
+  color:#fff;
+  padding:56px 22px 96px;
+  box-shadow:var(--shadow-1);
+}
+
+.hero-card h2{
+  margin:0 0 22px;
+  font-size:clamp(28px,6.5vw,64px);
+  line-height:1.08;
+  font-weight:900;
+  letter-spacing:.2px;
+}
+
+.hero-card p{
+  margin:0 0 28px;
+  color:var(--ink-dim);
+  line-height:1.65;
+  font-size:clamp(16px,2.4vw,20px);
+  max-width:58ch;
+}
+
+/* CTAs */
+.cta-row{display:flex;gap:16px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:16px 24px;border-radius:999px;
+  font-weight:900;text-decoration:none;border:1px solid transparent;
+  transition:transform .06s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+  box-shadow:var(--shadow-2);font-size:clamp(15px,2.1vw,18px)
+}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn-ghost{background:#1e1e1e;color:#fff;border-color:#2a2a2a}
+.btn-ghost:hover{background:#252525}
+.btn-light{background:#fff;color:#111;border-color:#e8e8e8}
+.btn-light:hover{background:#f3f3f3}
+
+/* ====== RESPONSIVE TUNING ====== */
+
+/* Phones (≤ 480px) */
+@media (max-width:480px){
+  .hero-top{ padding:18px 16px 140px; min-height:220px; }
+  .brand{ font-size: clamp(32px, 9vw, 42px); }
+  .hero-top::after{
+    right: 8px;
+    top: 36px;
+    width: 46vw;            /* smaller figure on phones */
+  }
+  .curve{ height:150px; margin-top:-120px; }
+  .hero-card{ padding:44px 18px 90px; }
+}
+
+/* Small tablets / large phones (481–767px) */
+@media (min-width:481px) and (max-width:767px){
+  .hero-top{ padding:22px 20px 170px; }
+  .hero-top::after{
+    right: 14px;
+    top: 40px;
+    width: clamp(220px, 40vw, 300px);
+  }
+  .curve{ height:170px; margin-top:-130px; }
+}
+
+/* Tablets (768–1023px) */
+@media (min-width:768px) and (max-width:1023px){
+  .hero-top{ padding:30px 24px 200px; min-height:280px; }
+  .brand{ font-size: clamp(40px, 6.5vw, 56px); }
+  .hero-top::after{
+    right: clamp(16px, 4vw, 36px);
+    top: clamp(28px, 5vw, 54px);
+    width: clamp(260px, 34vw, 340px);
+  }
+  .curve{ height:190px; margin-top:-150px; }
+}
+
+/* Desktops (≥ 1024px) */
+@media (min-width:1024px){
+  .hero-top{ padding:40px 28px 220px; min-height:320px; }
+  .curve{ height:200px; margin-top:-160px; }
+  .hero-card{ padding:68px 28px 120px; }
+  .hero-card > *{ margin-left:auto; margin-right:auto; max-width:960px; width:100%; }
+}
+
+/* ===== Bottom tab bar ===== */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;
+  background:#0f0f14;border-top:1px solid #1c1c26;
+  display:grid;grid-template-columns:repeat(5,1fr);
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom,0));
+  z-index:5;
+}
+.tab{
+  color:#b9bcc9;text-decoration:none;display:flex;flex-direction:column;
+  align-items:center;gap:4px;padding:6px 0;border-radius:10px;font-size:11px;font-weight:600
+}
+.tab.active,.tab:hover{color:#fff;background:#14141c}
+.bottom-spacer{height:72px}
