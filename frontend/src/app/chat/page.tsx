@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "@/components/AuthContext"; // <-- your existing context
+import { useAuth } from "@/components/AuthContext"; // still used for redirect guard
 import "./chat.css";
 
 type Msg = { role: "user" | "bot"; content: string; ts: number };
@@ -10,7 +10,7 @@ type Thread = { id: string; title: string; createdAt: number; messages: Msg[] };
 const LS_KEY = "faithchat_threads_v1";
 
 export default function ChatPage() {
-  const { token } = useAuth(); // <-- get JWT (or null)
+  const { token } = useAuth(); // only for redirect; not used in fetch now
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -48,9 +48,9 @@ export default function ChatPage() {
     [threads, activeId]
   );
 
-  // redirect if unauthenticated (mirrors your older page)
+  // redirect if unauthenticated
   useEffect(() => {
-    if (token === null || token === undefined) return; // wait for context
+    if (token === null || token === undefined) return; // wait for context to initialize
     if (!token) window.location.href = "/login";
   }, [token]);
 
@@ -104,22 +104,19 @@ export default function ChatPage() {
     );
   }
 
-  // ---------- backend call (replaces the fake bot) ----------
+  // ---------- backend call via server proxy ----------
   async function getBotReply(userText: string, thread: Thread) {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-
-    // Map our UI history (user|bot) -> API history (user|assistant)
+    // Map UI history (user|bot) -> API history (user|assistant)
     const apiHistory = thread.messages.map((m) => ({
       role: m.role === "bot" ? ("assistant" as const) : ("user" as const),
       content: m.content,
     }));
 
-    const res = await fetch(base + "/chat", {
+    // Call our Next.js proxy; it injects the Authorization header server-side.
+    const res = await fetch("/api/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // include cookies so the proxy can read fc_token
       body: JSON.stringify({
         message: userText,
         history: [...apiHistory, { role: "user", content: userText }],
@@ -144,6 +141,7 @@ export default function ChatPage() {
     appendMessage("user", text);
     setInput("");
     setTyping(true);
+
     // typing stub
     setThreads((prev) =>
       prev.map((t) =>
@@ -153,11 +151,7 @@ export default function ChatPage() {
     scrollToBottom();
 
     try {
-      const reply = await getBotReply(text, {
-        ...activeThread,
-        messages: activeThread.messages, // snapshot
-      });
-
+      const reply = await getBotReply(text, { ...activeThread, messages: activeThread.messages });
       // remove typing stub (last bot "…")
       setThreads((prev) =>
         prev.map((t) =>
@@ -171,11 +165,9 @@ export default function ChatPage() {
             : t
         )
       );
-
       appendMessage("bot", reply);
       scrollToBottom();
     } catch (err: any) {
-      // remove typing stub
       setThreads((prev) =>
         prev.map((t) =>
           t.id === activeId
@@ -224,7 +216,7 @@ export default function ChatPage() {
         <header className="chat-head">
           <h1>📖 <span className="title">FaithChat</span></h1>
           <p className="lede">
-            Ask anything about faith, life, or the Bible — NKJV‑only answers with clear
+            Ask anything about faith, life, or the Bible — NKJV-only answers with clear
             explanation and a Spurgeon insight.
           </p>
         </header>
