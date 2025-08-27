@@ -1,32 +1,34 @@
 // app/api/chat/route.ts
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const API_BASE =
-  process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE = process.env.API_BASE_URL; // e.g. https://your-railway-app.up.railway.app
 
 export async function POST(req: Request) {
-  try {
-    const token = cookies().get("fc_token")?.value; // set by /api/login or /api/session
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const body = await req.json();
-
-    const res = await fetch(`${API_BASE}/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // <<< forward the auth header to your FastAPI/whatever backend
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Proxy error" }, { status: 500 });
+  if (!BASE) {
+    return new Response(
+      JSON.stringify({ error: "Missing API_BASE_URL env var" }),
+      { status: 500, headers: { "content-type": "application/json" } }
+    );
   }
+
+  // forward the incoming JSON body to your backend
+  const payload = await req.json();
+
+  // read auth cookie set by /api/login (fc_token)
+  const token = cookies().get("fc_token")?.value;
+
+  const res = await fetch(`${BASE}/chat`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+    // no CORS needed here—this is server-to-server
+  });
+
+  // pipe backend response through unchanged
+  const text = await res.text();
+  const contentType = res.headers.get("content-type") ?? "application/json";
+  return new Response(text, { status: res.status, headers: { "content-type": contentType } });
 }
