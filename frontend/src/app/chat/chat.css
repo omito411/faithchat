@@ -122,6 +122,59 @@
 /* Footer */
 .chat-foot{ color: var(--muted); margin-top: 8px; text-align: center; }
 
+/* ----- Conversations: actions + delete button ----- */
+.chat-sidebar-actions{
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.chat-btn-clear{
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid #ece7de;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  color: var(--muted);
+}
+.chat-btn-clear:hover{ background:#faf7f2; }
+
+.chat-thread-row{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-thread-row .chat-thread{
+  flex: 1 1 auto;
+}
+.chat-thread-del{
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ece7de;
+  border-radius: 10px;
+  background: var(--panel);
+  cursor: pointer;
+  line-height: 1;
+  box-shadow: 0 1px 6px rgba(0,0,0,.03);
+  color: var(--muted);
+}
+.chat-thread-del:hover{ background:#faf7f2; }
+/* hover red option: .chat-thread-del:hover { color: #b42318; } */
+
+/* focus states for a11y */
+.chat-thread:focus-visible,
+.chat-btn-new:focus-visible,
+.chat-btn-clear:focus-visible,
+.chat-thread-del:focus-visible{
+  outline: 2px solid #cfc7ba;
+  outline-offset: 2px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px){
   .chat-app{ grid-template-columns: 1fr; }
