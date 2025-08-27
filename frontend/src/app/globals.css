@@ -1,55 +1,37 @@
+/* Tailwind (keep if you're using it) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Theme fonts (swap for your preferred Google font if you like) */
+/* Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
-:root {
-  --bg: #0d0d10;          /* near-black */
-  --ink: #e5e7eb;         /* text */
-  --brand: #f43f5e;       /* hero pink/red */
+/* Global tokens */
+:root{
+  --brand: #1F3A77;
+  --ink: #0f172a;
+  --bg: #fafafa;
+  --radius: 10px;
+  --focus: #1E4FDB;
 }
 
-html, body {
-  height: 100%;
+/* Base */
+*{ box-sizing: border-box; }
+html, body{ height:100%; }
+body{
+  margin:0;
   background: var(--bg);
   color: var(--ink);
   font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Curved hero divider like the template */
-.curve-bottom {
-  position: relative;
-  overflow: hidden;
-}
-.curve-bottom:after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -24px;
-  transform: translateX(-50%);
-  width: 140%;
-  height: 80px;
-  background: var(--bg);
-  border-radius: 50%;
-  box-shadow: 0 -20px 40px rgba(0,0,0,0.2) inset;
+/* Accessibility */
+:focus-visible{
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-/* ==== Donate route: hide the global site header/nav; keep the page .appbar ==== */
-body.route-donate :is(
-  .global-nav,
-  .header.navbar,
-  .navbar,
-  header.site-nav,
-  [data-global="header"],
-  nav[aria-label="Global"],
-  .top-nav
-) {
-  display: none !important;
-}
-
-
-
-
-
+/* Helpers */
+.container{ max-width: 1200px; margin-inline:auto; padding-inline:16px; }
+a{ color: inherit; text-decoration: none; }
