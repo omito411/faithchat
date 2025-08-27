@@ -1,22 +1,53 @@
-import "./globals.css";
-import { ReactNode } from "react";
-import { AuthProvider } from "@/components/AuthContext";
-import AppFrame from "@/components/AppFrame"; // <-- client wrapper
+"use client";
 
-export const metadata = {
-  title: "FaithChat - Bible-Based AI",
-  description:
-    "Ask anything about faith, life, or the Bible — NKJV-only, pastorally explained.",
+import { createContext, useContext, useEffect, useState } from "react";
+
+type AuthContextType = {
+  token: string | null;                 // use a *hint* (e.g., "1"), not the real JWT
+  setToken: (t: string | null) => void; // call this after successful login
+  clearToken: () => void;
+  signOut: () => Promise<void>;         // NEW
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+const AuthContext = createContext<AuthContextType>({
+  token: null,
+  setToken: () => {},
+  clearToken: () => {},
+  signOut: async () => {},
+});
+
+const HINT_KEY = "fc_token"; // this is just a UI hint; not the httpOnly cookie
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [token, setTokenState] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = localStorage.getItem(HINT_KEY);
+    if (t) setTokenState(t);
+  }, []);
+
+  const setToken = (t: string | null) => {
+    setTokenState(t);
+    if (t) localStorage.setItem(HINT_KEY, t);
+    else localStorage.removeItem(HINT_KEY);
+  };
+
+  const clearToken = () => setToken(null);
+
+  // NEW: clears httpOnly cookies server-side, then clears local hint and redirects
+  const signOut = async () => {
+    try { await fetch("/api/logout", { method: "POST" }); } catch {}
+    clearToken();
+    window.location.assign("/login");
+  };
+
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-neutral-50 text-neutral-900">
-        <AuthProvider>
-          <AppFrame>{children}</AppFrame>
-        </AuthProvider>
-      </body>
-    </html>
+    <AuthContext.Provider value={{ token, setToken, clearToken, signOut }}>
+      {children}
+    </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
 }

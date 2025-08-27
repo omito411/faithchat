@@ -62,3 +62,24 @@
   .fc-nav-links{ display:none; }
   .fc-hamburger{ display:flex; }
 }
+
+/* ------- tiny polish (no major changes) ------- */
+
+/* Keyboard focus */
+.fc-nav-links a:focus-visible,
+.fc-nav-drawer a:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Optional: mark active route if you set aria-current="page" on a Link */
+.fc-nav-links a[aria-current="page"]{ color: var(--accent); }
+
+/* Nice bottom rule for the last mobile item */
+.fc-nav-drawer a:last-child{ border-bottom:1px solid rgba(15,23,42,.06); }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .fc-nav-links a,
+  .fc-hamburger span{ transition: none; }
+}
