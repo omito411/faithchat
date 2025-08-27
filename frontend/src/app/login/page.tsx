@@ -1,19 +1,27 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthContext"; // ← NEW
 import "./login.css";
 
 function LoginInner() {
   const sp = useSearchParams();
   const next = sp.get("next") || "/chat";
+  const router = useRouter();
+  const { setToken, token } = useAuth();           // ← NEW
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Optional: if already logged in, bounce to next
+  useEffect(() => {
+    if (token) router.replace(next);
+  }, [token, next, router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,6 +37,11 @@ function LoginInner() {
         const data = await safeJson(res);
         throw new Error(data?.error || `Login failed (${res.status})`);
       }
+
+      // ✅ Flip navbar to "Sign out"
+      setToken("1"); // harmless UI hint; real auth is the httpOnly cookie
+
+      // Navigate to the intended page
       window.location.href = next;
     } catch (err: any) {
       setError(err?.message || "Login failed");
@@ -98,14 +111,13 @@ function LoginInner() {
       </section>
 
       <p className="login-footnote">
-        Built with ❤️ • NKJV Scripture references only • Spurgeon quotes when helpful
+        Built with ❤️ • KJV Scripture references only • Spurgeon quotes when helpful
       </p>
     </main>
   );
 }
 
 export default function Page() {
-  // The Suspense boundary makes Next happy during prerender/streaming
   return (
     <Suspense fallback={<main className="login-page container" />}>
       <LoginInner />
