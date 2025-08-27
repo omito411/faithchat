@@ -7,14 +7,14 @@ from routes.chat import router as chat_router
 app = FastAPI(title="FaithChat API", version="0.1.0")
 
 # Explicit origins for CORS
-ALLOWED_ORIGINS = [
-    "https://faithchat-ncg3.vercel.app",  # Vercel
-    "http://localhost:3002",              # Dev
+origins = [
+    os.getenv("FRONTEND_ORIGIN", ""),
+    *(os.getenv("FRONTEND_ORIGIN_EXTRA","").split(",") if os.getenv("FRONTEND_ORIGIN_EXTRA") else [])
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[o for o in origins if o],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

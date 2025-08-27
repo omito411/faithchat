@@ -1,55 +1,42 @@
-// app/api/register/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export async function POST(req: Request) {
   try {
     const { email, password, name } = await req.json();
-
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
+    const supabase = createSupabaseServerClient();
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: name ? { name } : undefined, // store user metadata (optional)
-        // You can also set emailRedirectTo for magic links here if needed
-      },
+      options: { data: { name } },
     });
-
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // If email confirmation is ON (default), session will be null until the user verifies.
-    if (!data.session) {
-      return NextResponse.json({
-        ok: true,
-        requiresVerification: true,
-        message: "Check your email to verify your account.",
-      });
+    const { session } = data;
+    if (!session) {
+      return NextResponse.json({ ok: true, message: "Check your email to confirm." }, { status: 200 });
     }
 
-    // If confirmations are OFF, Supabase returns a session immediately — set cookies like login.
-    const { access_token, refresh_token, expires_in } = data.session;
-    const res = NextResponse.json({ ok: true, requiresVerification: false });
+    const res = NextResponse.json({ ok: true }, { status: 200 });
+
+    const { access_token, refresh_token } = session;
 
     res.cookies.set("fc_token", access_token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: expires_in,
+      maxAge: 60 * 60,
     });
 
-    res.cookies.set("fc_refresh", refresh_token, {
+    res.cookies.set("fc_refresh", refresh_token ?? "", {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -58,7 +45,7 @@ export async function POST(req: Request) {
     });
 
     return res;
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 }

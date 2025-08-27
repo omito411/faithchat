@@ -23,21 +23,26 @@ class ChatOutput(BaseModel):
 
 @router.post("", response_model=ChatOutput)
 def chat(input_data: ChatInput, authorization: str | None = Header(default=None)):
-    # Simple bearer token check
+    # Extract Bearer token
     token = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
-    user_email = require_user(token)
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    try:
+        user_email = require_user(token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Unauthorized: {str(e)}")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Missing OPENAI_API_KEY on server")
+
+    client = OpenAI(api_key=api_key)
+
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-    # Append short conversation history (optional)
     for m in input_data.history[-10:]:
         if "role" in m and "content" in m:
             messages.append({"role": m["role"], "content": m["content"]})
-
-    # Add user message
     messages.append({"role": "user", "content": input_data.message})
 
     try:
@@ -49,4 +54,5 @@ def chat(input_data: ChatInput, authorization: str | None = Header(default=None)
         reply = resp.choices[0].message.content
         return ChatOutput(reply=reply)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Now you’ll see the actual cause in Railway logs
+        raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
