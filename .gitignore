@@ -10,3 +10,6 @@ env/
 
 # OS
 .DS_Store
+backend.zip
+frontend.zip
+*.zip
