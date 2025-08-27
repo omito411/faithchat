@@ -1,11 +1,7 @@
+// app/api/logout/route.ts
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
-export async function POST() {
-  const res = NextResponse.json({ ok: true });
-
-  // expire auth cookies
+function clearCookies(res: NextResponse) {
   res.cookies.set("fc_token", "", {
     httpOnly: true,
     sameSite: "lax",
@@ -20,6 +16,15 @@ export async function POST() {
     path: "/",
     maxAge: 0,
   });
-
   return res;
+}
+
+// used by your NavBar's signOut() (POST fetch)
+export async function POST() {
+  return clearCookies(NextResponse.json({ ok: true }));
+}
+
+// lets you also link directly to /api/logout
+export async function GET(req: Request) {
+  return clearCookies(NextResponse.redirect(new URL("/login", req.url)));
 }
