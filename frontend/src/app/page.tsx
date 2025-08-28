@@ -14,11 +14,10 @@ export default function Home() {
             {/* LEFT: Text content */}
             <div className="home-hero-content">
               <h1>
-                Ask—learn—grow in God’s <span className="home-nowrap">Word.</span>
+                Gospel AI <span className="home-nowrap">.</span>
               </h1>
               <p className="home-lede">
-                Bible‑first answers (NKJV) with clear, pastoral explanations — plus
-                Spurgeon quotes when helpful. Ask anything about faith, life, or the Bible.
+                Ask—learn—grow in God's word. Bible‑first answers (KJV) with clear, biblical explanations. Ask anything about faith, life, or the Bible.
               </p>
               <div className="home-actions">
                 <Link href="/chat" className="home-btn home-btn-primary">Open Chat</Link>

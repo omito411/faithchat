@@ -1,69 +1,81 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthContext";
 import "./navbar.css";
 
 export default function NavBar() {
-  const toggleId = "navToggle";
+  const pathname = usePathname();
   const { token, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
 
-  const closeNav = () => {
-    const cb = document.getElementById(toggleId) as HTMLInputElement | null;
-    if (cb) cb.checked = false;
-  };
+  // lock body scroll when menu is open
+  useEffect(() => {
+    document.body.classList.toggle("nav-open", open);
+    return () => document.body.classList.remove("nav-open");
+  }, [open]);
 
-  const handleSignOut = async (e?: React.MouseEvent<HTMLAnchorElement>) => {
-    e?.preventDefault();
-    closeNav();
-    await signOut();
-  };
+  // close menu when resizing to desktop
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth > 760) setOpen(false); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const isActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname?.startsWith(href);
 
   return (
-    <header className="fc-navbar" data-global="header">
+    <header className="fc-navbar">
       <div className="fc-container fc-nav-inner">
-        <Link className="fc-brand" href="/" onClick={closeNav}>
-          <svg className="fc-brand-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-            <path d="M24 4c11.046 0 20 7.835 20 17.5S35.046 39 24 39c-1.51 0-2.973-.148-4.365-.43L9.2 43.3a1.4 1.4 0 0 1-1.945-1.534l1.76-7.73C6.29 30.96 4 26.61 4 21.5 4 11.835 12.954 4 24 4z" />
-            <rect x="22" y="13" width="4" height="16" rx="1" />
-            <rect x="16" y="19" width="16" height="4" rx="1" />
-          </svg>
-          <span className="fc-brand-text">Gospel AI</span>
+        {/* Brand */}
+        <Link className="fc-brand" href="/">
+          <img className="fc-brand-logo" src="/assets/faithchat-logo.png" alt="FaithChat AI logo" />
+          <span className="fc-brand-text">FaithChat AI</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="fc-nav-links" aria-label="Main">
-          <Link href="/" onClick={closeNav}>Home</Link>
-          <Link href="/chat" onClick={closeNav}>Chat</Link>
-          <Link href="/donate" onClick={closeNav}>Donate</Link>
-
-          {token ? (
-            // Render as <a> to inherit the same link styling as "Login"
-            <a href="#" onClick={handleSignOut}>Sign out</a>
-          ) : (
-            <Link href="/login" onClick={closeNav}>Login</Link>
-          )}
-        </nav>
-
-        {/* Mobile toggle */}
-        <input id={toggleId} type="checkbox" className="fc-nav-toggle" aria-label="Toggle navigation" />
-        <label htmlFor={toggleId} className="fc-hamburger" aria-hidden="true">
+        {/* Burger */}
+        <button
+          className="fc-burger"
+          aria-label="Toggle menu"
+          aria-expanded={open}
+          aria-controls="fc-nav"
+          onClick={() => setOpen((v) => !v)}
+        >
           <span></span><span></span><span></span>
-        </label>
+        </button>
 
-        {/* Mobile drawer */}
-        <nav className="fc-nav-drawer" aria-label="Mobile">
-          <Link href="/" onClick={closeNav}>Home</Link>
-          <Link href="/chat" onClick={closeNav}>Chat</Link>
-          <Link href="/donate" onClick={closeNav}>Donate</Link>
+        {/* Links */}
+        <nav
+          id="fc-nav"
+          className={`fc-links${open ? " open" : ""}`}
+          aria-label="Primary"
+          onClick={() => setOpen(false)} // close on any link click
+        >
+          <Link href="/" className={isActive("/") ? "active" : ""}>Home</Link>
+          <Link href="/chat" className={isActive("/chat") ? "active" : ""}>Chat</Link>
+          <Link href="/donate" className={isActive("/donate") ? "active" : ""}>Donate</Link>
 
           {token ? (
-            <a href="#" onClick={handleSignOut}>Sign out</a>
+            // same style as Login; rendered as link for consistent look
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); signOut(); }}
+            >
+              Sign out
+            </a>
           ) : (
-            <Link href="/login" onClick={closeNav}>Login</Link>
+            <Link href="/login" className={isActive("/login") ? "active" : ""}>Login</Link>
           )}
         </nav>
       </div>
+
+      {/* Mobile scrim */}
+      {open && <div className="fc-scrim" onClick={() => setOpen(false)} aria-hidden="true" />}
     </header>
   );
 }

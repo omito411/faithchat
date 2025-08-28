@@ -1,85 +1,101 @@
-/* All vars live on .fc-navbar so they don't leak to donate */
-.fc-navbar{
-  --ink: #0F172A;
-  --accent: #2E7BEF;
-  --brand: #1F3A77;
-  --bg: #fff;
-  --rail-bg: #e7e4de;
-
-  position: sticky; top: 0; z-index: 50;
-  background: var(--bg);
-  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+:root {
+  --bg: #0b0d12;
+  --border: #1e2332;
+  --ink: #e9edf5;
+  --accent: #2e7bef;
 }
 
-/* Scoped container */
-.fc-container{ max-width: 1100px; margin-inline: auto; padding-inline: 24px; }
-.fc-nav-inner{
+/* Container helper */
+.fc-container { max-width: 1100px; margin-inline: auto; padding-inline: 20px; }
+
+/* Navbar wrapper */
+.fc-navbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(12,14,20,.9);
+  backdrop-filter: saturate(150%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Grid layout */
+.fc-nav-inner {
   display: grid;
-  grid-template-columns: auto 1fr auto auto; /* brand | filler | links | burger */
-  align-items: center; gap: 16px; min-height: 74px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
 }
 
-/* Brand */
-.fc-brand{ display:inline-flex; align-items:center; gap:10px; text-decoration:none; }
-.fc-brand-text{ font-weight:700; font-size:1.25rem; letter-spacing:.2px; color: var(--brand); }
-.fc-brand-mark{ width:40px; height:40px; fill:#1F6FDB; }
-.fc-brand-mark rect{ fill:#fff; }
+/* Brand logo */
+.fc-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.fc-brand-logo { width: 30px; height: 30px; object-fit: contain; }
+.fc-brand-text { font-weight: 800; font-size: 20px; color: var(--ink); }
 
-/* Centered rail (desktop) */
-.fc-nav-links{
-  justify-self: center;
-  display:flex; gap:28px;
-  background: var(--rail-bg);
-  padding:10px 18px; border-radius:16px;
+/* Links */
+.fc-links {
+  justify-self: end;
+  display: flex;
+  gap: 26px;
+  align-items: center;
 }
-.fc-nav-links a{
-  color: var(--ink); text-decoration:none; font-weight:600;
-  text-transform:uppercase; letter-spacing:.4px; font-size:12px; opacity:.9;
-  transition: color .2s, opacity .2s, transform .2s;
+.fc-links a {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
 }
-.fc-nav-links a:hover{ color: var(--accent); transform: translateY(-1px); }
+.fc-links a:hover { background: #161a28; }
+.fc-links a.active { color: var(--accent); }
 
-/* Mobile */
-.fc-nav-toggle{ display:none; }
-.fc-hamburger{ display:none; width:40px; height:40px; cursor:pointer; justify-self:end; }
-.fc-hamburger span{ display:block; height:2px; background:var(--ink); margin:8px 6px; transition: transform .25s, opacity .25s; }
-
-.fc-nav-drawer{ display:none; grid-column:1 / -1; padding:8px 0 16px; }
-.fc-nav-drawer a{
-  display:block; padding:10px 0; color:var(--ink); text-decoration:none;
-  border-top:1px solid rgba(15,23,42,.06);
+/* Burger (mobile only) */
+.fc-burger {
+  display: none;
+  justify-self: end;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: transparent;
+  border: none;
+  color: var(--ink);
 }
-.fc-nav-drawer a:hover{ color: var(--accent); }
-
-/* Toggle interactions */
-#navToggle:checked ~ .fc-hamburger span:nth-child(1){ transform: translateY(10px) rotate(45deg); }
-#navToggle:checked ~ .fc-hamburger span:nth-child(2){ opacity:0; }
-#navToggle:checked ~ .fc-hamburger span:nth-child(3){ transform: translateY(-10px) rotate(-45deg); }
-#navToggle:checked ~ .fc-nav-drawer{ display:block; }
-
-/* Breakpoint */
-@media (max-width:780px){
-  .fc-nav-links{ display:none; }
-  .fc-hamburger{ display:flex; }
+.fc-burger span {
+  display: block;
+  width: 24px;             /* NEW: ensure bars are visible on iOS */
+  height: 2px;
+  margin: 6px 10px;
+  background: #cdd3e6;
+  border-radius: 2px;
 }
 
-/* ------- tiny polish (no major changes) ------- */
+/* Responsive behavior */
+@media (max-width: 760px) {
+  .fc-links {
+    position: fixed;
+    inset: 64px 0 auto 0;
+    background: rgba(10,12,18,.98);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px 18px;
+    display: grid;
+    gap: 6px;
+    transform: translateY(-110%);
+    transition: transform .25s ease;
+  }
+  .fc-links.open { transform: translateY(0); }
+  .fc-burger { display: inline-flex; }
+  body.nav-open { overflow: hidden; }
+}
 
-/* Keyboard focus */
-.fc-nav-links a:focus-visible,
-.fc-nav-drawer a:focus-visible{
+/* NEW: scrim for mobile drawer */
+.fc-scrim{
+  position: fixed; inset: 64px 0 0 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+  z-index: 39;
+}
+
+/* NEW: keyboard focus */
+.fc-links a:focus-visible,
+.fc-burger:focus-visible,
+.fc-brand:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-/* Optional: mark active route if you set aria-current="page" on a Link */
-.fc-nav-links a[aria-current="page"]{ color: var(--accent); }
-
-/* Nice bottom rule for the last mobile item */
-.fc-nav-drawer a:last-child{ border-bottom:1px solid rgba(15,23,42,.06); }
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce){
-  .fc-nav-links a,
-  .fc-hamburger span{ transition: none; }
 }
