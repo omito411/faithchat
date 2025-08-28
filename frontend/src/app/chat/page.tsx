@@ -25,13 +25,16 @@ export default function ChatPage() {
   const openBtnRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setDrawerOpen(false); }
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  useEffect(() => { drawerOpen ? drawerRef.current?.focus() : openBtnRef.current?.focus(); }, [drawerOpen]);
+  useEffect(() => {
+    if (drawerOpen) drawerRef.current?.focus();
+    else openBtnRef.current?.focus();
+  }, [drawerOpen]);
 
-  // ---- user name (from localStorage set at login) ----
+  // ---- user display name (from localStorage set at login) ----
   const [displayName, setDisplayName] = useState<string>("You");
   useEffect(() => {
     const n = localStorage.getItem(LS_NAME) || localStorage.getItem(LS_EMAIL);
@@ -42,7 +45,6 @@ export default function ChatPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // load / persist
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_THREADS);
@@ -56,11 +58,11 @@ export default function ChatPage() {
         }
       }
     } catch {}
-    // bootstrap with one welcome thread
     const t = makeWelcomeThread();
     setThreads([t]);
     setActiveId(t.id);
   }, []);
+
   useEffect(() => {
     localStorage.setItem(LS_THREADS, JSON.stringify({ threads, activeId }));
   }, [threads, activeId]);
@@ -70,6 +72,8 @@ export default function ChatPage() {
     [threads, activeId]
   );
 
+  // ---- chat input & scrolling ----
+  const [input, setInput] = useState("");
   const chatRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -95,7 +99,8 @@ export default function ChatPage() {
     const t = makeThread("New conversation");
     t.messages.push({
       role: "ai",
-      content: "Hi! Ask anything about faith, life, or the Bible (NKJV). I’ll answer clearly and pastorally.",
+      content:
+        "Hi! Ask anything about faith, life, or the Bible (NKJV). I’ll answer clearly and pastorally.",
       ts: Date.now(),
     });
     return t;
@@ -175,11 +180,10 @@ export default function ChatPage() {
   // ---- submit ----
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const text = (document.getElementById("msg") as HTMLInputElement | null)?.value.trim() || "";
+    const text = input.trim();
     if (!text || !activeThread) return;
 
-    (document.getElementById("msg") as HTMLInputElement | null)!.value = "";
-
+    setInput("");
     appendMessage("me", text);
     appendMessage("ai", "…"); // typing stub
 
@@ -189,8 +193,8 @@ export default function ChatPage() {
       setThreads((prev) =>
         prev.map((t) => {
           if (t.id !== activeId) return t;
-          const lastNotStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
-          return { ...t, messages: [...lastNotStub, { role: "ai", content: reply, ts: Date.now() }] };
+          const withoutStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
+          return { ...t, messages: [...withoutStub, { role: "ai", content: reply, ts: Date.now() }] };
         })
       );
       scrollToBottom();
@@ -198,18 +202,19 @@ export default function ChatPage() {
       setThreads((prev) =>
         prev.map((t) => {
           if (t.id !== activeId) return t;
-          const lastNotStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
+          const withoutStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
           return {
             ...t,
-            messages: [...lastNotStub, { role: "ai", content: "Error: " + (err?.message || "request failed"), ts: Date.now() }],
+            messages: [...withoutStub, { role: "ai", content: "Error: " + (err?.message || "request failed"), ts: Date.now() }],
           };
         })
       );
     }
   }
 
+  // ---- render ----
   return (
-    <>
+    <div className="fc-chat">{/* SCOPED WRAPPER to prevent CSS leakage */}
       {/* Backdrop */}
       <div className="scrim" hidden={!drawerOpen} onClick={() => setDrawerOpen(false)} />
 
@@ -225,7 +230,7 @@ export default function ChatPage() {
         <div className="drawer-inner">
           <div className="drawer-header">
             <h2 id="drawer-title">Conversations</h2>
-            <button className="icon-btn close-drawer" aria-label="Close menu" onClick={() => setDrawerOpen(false)}>
+            <button className="icon-btn" aria-label="Close menu" onClick={() => setDrawerOpen(false)}>
               <svg viewBox="0 0 24 24" width="22" height="22">
                 <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
@@ -234,7 +239,6 @@ export default function ChatPage() {
 
           <div className="drawer-actions">
             <button className="drawer-new" onClick={createThread}>＋ New chat</button>
-            {/* (optional) search could go here later */}
           </div>
 
           <nav className="drawer-threads" aria-label="Conversations">
@@ -258,7 +262,7 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* App */}
+      {/* App frame */}
       <div className="app" aria-hidden={false}>
         {/* Top bar */}
         <header className="topbar" role="banner">
@@ -306,6 +310,8 @@ export default function ChatPage() {
             className="input"
             placeholder="Message GospelAI…"
             inputMode="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -315,7 +321,6 @@ export default function ChatPage() {
           />
 
           <div className="trailing">
-            {/* voice placeholder */}
             <button className="circle-btn" type="button" title="Voice" aria-label="Voice">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
                 <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3Z" fill="none" stroke="currentColor" strokeWidth="2"/>
@@ -331,6 +336,6 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }
