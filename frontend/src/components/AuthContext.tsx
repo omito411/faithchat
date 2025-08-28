@@ -3,10 +3,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type AuthContextType = {
-  token: string | null;                 // use a *hint* (e.g., "1"), not the real JWT
-  setToken: (t: string | null) => void; // call this after successful login
+  token: string | null;                 // UI hint (e.g., "1"), not the real JWT
+  setToken: (t: string | null) => void; // call after successful login
   clearToken: () => void;
-  signOut: () => Promise<void>;         // NEW
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,14 +16,25 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-const HINT_KEY = "fc_token"; // this is just a UI hint; not the httpOnly cookie
+const HINT_KEY  = "fc_token";  // UI hint only (actual auth is httpOnly cookie)
+const NAME_KEY  = "fc_name";
+const EMAIL_KEY = "fc_email";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
 
+  // hydrate from localStorage
   useEffect(() => {
-    const t = localStorage.getItem(HINT_KEY);
-    if (t) setTokenState(t);
+    setTokenState(localStorage.getItem(HINT_KEY));
+  }, []);
+
+  // keep multiple tabs in sync (optional but nice)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === HINT_KEY) setTokenState(localStorage.getItem(HINT_KEY));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const setToken = (t: string | null) => {
@@ -34,10 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearToken = () => setToken(null);
 
-  // NEW: clears httpOnly cookies server-side, then clears local hint and redirects
   const signOut = async () => {
     try { await fetch("/api/logout", { method: "POST" }); } catch {}
-    clearToken();
+    // clear UI hint + any stored profile bits
+    localStorage.removeItem(HINT_KEY);
+    localStorage.removeItem(NAME_KEY);
+    localStorage.removeItem(EMAIL_KEY);
+    setTokenState(null);
     window.location.assign("/login");
   };
 

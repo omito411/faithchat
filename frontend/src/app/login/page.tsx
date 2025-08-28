@@ -3,14 +3,14 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/components/AuthContext"; // ← NEW
+import { useAuth } from "@/components/AuthContext";
 import "./login.css";
 
 function LoginInner() {
   const sp = useSearchParams();
   const next = sp.get("next") || "/chat";
   const router = useRouter();
-  const { setToken, token } = useAuth();           // ← NEW
+  const { setToken, token } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +18,7 @@ function LoginInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Optional: if already logged in, bounce to next
+  // If already logged in, redirect
   useEffect(() => {
     if (token) router.replace(next);
   }, [token, next, router]);
@@ -39,9 +39,13 @@ function LoginInner() {
       }
 
       // ✅ Flip navbar to "Sign out"
-      setToken("1"); // harmless UI hint; real auth is the httpOnly cookie
+      setToken("1"); // harmless UI hint; real auth stays in httpOnly cookie
 
-      // Navigate to the intended page
+      // ✅ Store display name for chat drawer footer
+      localStorage.setItem("fc_name", email);
+      localStorage.setItem("fc_email", email);
+
+      // Go to intended page
       window.location.href = next;
     } catch (err: any) {
       setError(err?.message || "Login failed");

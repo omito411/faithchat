@@ -195,34 +195,65 @@ body{
   margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .2px;
 }
 
-.drawer-search{
-  display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: center;
+/* Actions area (New chat button, future search slot) */
+.drawer-actions{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
   padding: 12px 14px;
+  border-bottom: 1px solid #161825;
 }
-.drawer-search input{
-  height: 38px; border-radius: 10px; border: 1px solid #232637; padding: 0 12px;
-  background: #131520; color: var(--ink);
+.drawer-new{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #232637;
+  background: #141826;
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
 }
-.drawer-search input::placeholder{ color: var(--ink-subtle); }
+.drawer-new:hover{ background:#171c2b; }
 
-.drawer-nav{
-  padding: 6px 8px 12px;
+/* Threads list */
+.drawer-threads{
+  padding: 8px 8px 12px;
   overflow: auto;
 }
-.drawer-nav a{
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 10px; margin: 2px 0;
-  border-radius: 10px; color: var(--ink); text-decoration: none;
+.thread-item{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 6px;
+  border-radius: 10px;
 }
-.drawer-nav a:hover{ background: #161a24; }
-.drawer-nav .ico{ width: 20px; display: inline-grid; place-items: center; }
-
-.drawer-group-label{
-  font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--ink-subtle);
-  margin: 14px 10px 6px;
+.thread-item.active{ background: #161a24; }
+.thread-main{
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 8px 8px;
+  border-radius: 8px;
 }
+.thread-title{
+  display:block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.thread-meta{
+  display:block; font-size: 12px; color:#8a90a2; margin-top: 2px;
+}
+.thread-del{
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: 1px solid #232637;
+  background: #141826;
+  color: var(--ink);
+  cursor: pointer;
+}
+.thread-del:hover{ background:#171c2b; }
 
+/* Footer */
 .drawer-footer{
   border-top: 1px solid #161825;
   padding: 12px 14px;
@@ -234,7 +265,7 @@ body{
   width: 34px; height: 34px; border-radius: 999px; background: #24304a; display: grid; place-items: center;
   font-weight: 700;
 }
-.drawer-footer .who{ color: var(--ink); font-weight: 600; }
+.drawer-footer .who{ color: var(--ink); font-weight: 700; }
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce){

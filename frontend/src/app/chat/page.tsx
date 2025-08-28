@@ -1,53 +1,76 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@/components/AuthContext";
 import "./chat.css";
 
 type Msg = { role: "ai" | "me"; content: string; ts: number };
+type Thread = { id: string; title: string; createdAt: number; messages: Msg[] };
 
-const LS_KEY = "fc_chat_v2";
+const LS_THREADS = "faithchat_threads_v2";
+const LS_NAME = "fc_name";
+const LS_EMAIL = "fc_email";
 
 export default function ChatPage() {
   // ---- auth guard ----
   const { token } = useAuth();
   useEffect(() => {
-    if (token === null) return;        // wait for hydration
+    if (token === null) return; // wait for hydration
     if (!token) window.location.href = "/login";
   }, [token]);
 
-  // ---- state ----
+  // ---- drawer state ----
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([
-    {
-      role: "ai",
-      content:
-        "Hi! Ask anything about faith, life, or the Bible (NKJV). I’ll answer clearly and pastorally.",
-      ts: Date.now(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-
-  const chatRef = useRef<HTMLDivElement | null>(null);
-  const openBtnRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
+  const openBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // ---- storage ----
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setDrawerOpen(false); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => { drawerOpen ? drawerRef.current?.focus() : openBtnRef.current?.focus(); }, [drawerOpen]);
+
+  // ---- user name (from localStorage set at login) ----
+  const [displayName, setDisplayName] = useState<string>("You");
+  useEffect(() => {
+    const n = localStorage.getItem(LS_NAME) || localStorage.getItem(LS_EMAIL);
+    if (n) setDisplayName(n);
+  }, []);
+
+  // ---- threads & active thread ----
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // load / persist
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(LS_KEY);
+      const raw = localStorage.getItem(LS_THREADS);
       if (raw) {
-        const prev = JSON.parse(raw) as Msg[];
-        if (Array.isArray(prev) && prev.length) setMsgs(prev);
+        const parsed = JSON.parse(raw) as { threads: Thread[]; activeId?: string } | Thread[];
+        const list = Array.isArray(parsed) ? parsed : parsed?.threads || [];
+        if (list.length) {
+          setThreads(list);
+          setActiveId((Array.isArray(parsed) ? null : parsed?.activeId) ?? list[0]?.id ?? null);
+          return;
+        }
       }
     } catch {}
+    // bootstrap with one welcome thread
+    const t = makeWelcomeThread();
+    setThreads([t]);
+    setActiveId(t.id);
   }, []);
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(msgs));
-  }, [msgs]);
+    localStorage.setItem(LS_THREADS, JSON.stringify({ threads, activeId }));
+  }, [threads, activeId]);
 
-  // ---- helpers ----
+  const activeThread = useMemo(
+    () => threads.find((t) => t.id === activeId) || null,
+    [threads, activeId]
+  );
+
+  const chatRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
       const el = chatRef.current;
@@ -55,30 +78,77 @@ export default function ChatPage() {
     });
   };
 
-  const addBubble = (text: string, who: Msg["role"]) => {
-    setMsgs((prev) => [...prev, { role: who, content: text, ts: Date.now() }]);
+  // ---- helpers ----
+  function cryptoRandom() {
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      const buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      return buf[0].toString(36);
+    }
+    return Math.random().toString(36).slice(2);
+  }
+
+  function makeThread(title = "New conversation"): Thread {
+    return { id: "t_" + cryptoRandom(), title, createdAt: Date.now(), messages: [] };
+  }
+  function makeWelcomeThread(): Thread {
+    const t = makeThread("New conversation");
+    t.messages.push({
+      role: "ai",
+      content: "Hi! Ask anything about faith, life, or the Bible (NKJV). I’ll answer clearly and pastorally.",
+      ts: Date.now(),
+    });
+    return t;
+  }
+
+  function updateTitleFromFirstUserMsg(t: Thread) {
+    const firstUser = t.messages.find((m) => m.role === "me");
+    if (firstUser) t.title = firstUser.content.length > 40 ? firstUser.content.slice(0, 37) + "…" : firstUser.content;
+  }
+
+  function createThread() {
+    const t = makeWelcomeThread();
+    setThreads((prev) => [t, ...prev]);
+    setActiveId(t.id);
+    setDrawerOpen(false);
+  }
+
+  function deleteThread(id: string) {
+    if (!confirm("Delete this conversation?")) return;
+    setThreads((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      if (id === activeId) {
+        if (next.length) setActiveId(next[0].id);
+        else {
+          const fresh = makeWelcomeThread();
+          setActiveId(fresh.id);
+          return [fresh];
+        }
+      }
+      return next;
+    });
+  }
+
+  function setActive(id: string) {
+    setActiveId(id);
+    setDrawerOpen(false);
+  }
+
+  function appendMessage(role: "ai" | "me", content: string) {
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id !== activeId) return t;
+        const next = { ...t, messages: [...t.messages, { role, content, ts: Date.now() }] };
+        if (role === "me" && t.messages.every((m) => m.role !== "me")) updateTitleFromFirstUserMsg(next);
+        return next;
+      })
+    );
     scrollToBottom();
-  };
+  }
 
-  // ---- drawer a11y bits ----
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setDrawerOpen(false);
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
-  useEffect(() => {
-    if (drawerOpen) {
-      drawerRef.current?.focus();
-    } else {
-      openBtnRef.current?.focus();
-    }
-  }, [drawerOpen]);
-
-  // ---- chat call (proxy → backend) ----
-  async function getBotReply(userText: string) {
-    const apiHistory = msgs.map((m) => ({
+  // ---- backend call (proxy → backend) ----
+  async function getBotReply(userText: string, thread: Thread) {
+    const apiHistory = thread.messages.map((m) => ({
       role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
       content: m.content,
     }));
@@ -95,9 +165,7 @@ export default function ChatPage() {
 
     if (!res.ok) {
       let detail = "";
-      try {
-        detail = await res.text();
-      } catch {}
+      try { detail = await res.text(); } catch {}
       throw new Error(detail || `HTTP ${res.status}`);
     }
     const data = (await res.json()) as { reply?: string };
@@ -107,54 +175,47 @@ export default function ChatPage() {
   // ---- submit ----
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const text = input.trim();
-    if (!text) return;
-    setInput("");
+    const text = (document.getElementById("msg") as HTMLInputElement | null)?.value.trim() || "";
+    if (!text || !activeThread) return;
 
-    addBubble(text, "me");
-    addBubble("…", "ai"); // typing stub
+    (document.getElementById("msg") as HTMLInputElement | null)!.value = "";
+
+    appendMessage("me", text);
+    appendMessage("ai", "…"); // typing stub
 
     try {
-      const reply = await getBotReply(text);
-      // remove stub (last ai bubble "…")
-      setMsgs((prev) => {
-        const next = [...prev];
-        for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].role === "ai" && next[i].content === "…") {
-            next.splice(i, 1);
-            break;
-          }
-        }
-        return [...next, { role: "ai", content: reply, ts: Date.now() }];
-      });
+      const reply = await getBotReply(text, activeThread);
+      // remove stub & append real reply
+      setThreads((prev) =>
+        prev.map((t) => {
+          if (t.id !== activeId) return t;
+          const lastNotStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
+          return { ...t, messages: [...lastNotStub, { role: "ai", content: reply, ts: Date.now() }] };
+        })
+      );
       scrollToBottom();
     } catch (err: any) {
-      setMsgs((prev) => {
-        const next = [...prev];
-        for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].role === "ai" && next[i].content === "…") {
-            next.splice(i, 1);
-            break;
-          }
-        }
-        return [
-          ...next,
-          { role: "ai", content: "Error: " + (err?.message || "request failed"), ts: Date.now() },
-        ];
-      });
+      setThreads((prev) =>
+        prev.map((t) => {
+          if (t.id !== activeId) return t;
+          const lastNotStub = t.messages.filter((m) => !(m.role === "ai" && m.content === "…"));
+          return {
+            ...t,
+            messages: [...lastNotStub, { role: "ai", content: "Error: " + (err?.message || "request failed"), ts: Date.now() }],
+          };
+        })
+      );
     }
   }
 
-  // ---- render ----
   return (
     <>
       {/* Backdrop */}
       <div className="scrim" hidden={!drawerOpen} onClick={() => setDrawerOpen(false)} />
 
-      {/* Drawer / Sidebar */}
+      {/* Drawer */}
       <aside
         className={`drawer${drawerOpen ? " open" : ""}`}
-        id="drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
@@ -163,59 +224,41 @@ export default function ChatPage() {
       >
         <div className="drawer-inner">
           <div className="drawer-header">
-            <h2 id="drawer-title">GospelAI</h2>
-            <button
-              className="icon-btn close-drawer"
-              aria-label="Close menu"
-              onClick={() => setDrawerOpen(false)}
-            >
+            <h2 id="drawer-title">Conversations</h2>
+            <button className="icon-btn close-drawer" aria-label="Close menu" onClick={() => setDrawerOpen(false)}>
               <svg viewBox="0 0 24 24" width="22" height="22">
-                <path
-                  d="M6 6l12 12M18 6L6 18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
+                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
 
-          <div className="drawer-search">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
-              <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <input type="search" placeholder="Search" aria-label="Search" />
+          <div className="drawer-actions">
+            <button className="drawer-new" onClick={createThread}>＋ New chat</button>
+            {/* (optional) search could go here later */}
           </div>
 
-          <nav className="drawer-nav">
-            <Link href="/chat"><span className="ico">💬</span> Chat</Link>
-            <a href="#"><span className="ico">📚</span> Library</a>
-            <a href="#"><span className="ico">🔎</span> GPTs</a>
-            <a href="#"><span className="ico">🖼️</span> Reimaginator</a>
-            <a href="#"><span className="ico">✨</span> New Project</a>
-
-            <div className="drawer-group-label">Workspaces</div>
-            <a href="#"><span className="ico">📁</span> GospelAI</a>
-            <a href="#"><span className="ico">📁</span> MED</a>
-            <a href="#"><span className="ico">📁</span> SermonAI</a>
-            <a href="#"><span className="ico">📁</span> Trading course website</a>
-
-            <div className="drawer-group-label">Recent</div>
-            <a href="#"><span className="ico">📝</span> Create FaithChat logo</a>
+          <nav className="drawer-threads" aria-label="Conversations">
+            {threads.map((t) => (
+              <div key={t.id} className={`thread-item${t.id === activeId ? " active" : ""}`}>
+                <button className="thread-main" onClick={() => setActive(t.id)} title={t.title}>
+                  <span className="thread-title">{t.title || "New conversation"}</span>
+                  <span className="thread-meta">{new Date(t.createdAt).toLocaleDateString()}</span>
+                </button>
+                <button className="thread-del" aria-label={`Delete ${t.title || "conversation"}`} onClick={() => deleteThread(t.id)}>🗑</button>
+              </div>
+            ))}
           </nav>
 
           <div className="drawer-footer">
             <div className="me">
-              <div className="avatar">ST</div>
-              <div className="who">Stephen Omitogun</div>
+              <div className="avatar">{(displayName || "You").slice(0,2).toUpperCase()}</div>
+              <div className="who">{displayName || "You"}</div>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* App frame */}
+      {/* App */}
       <div className="app" aria-hidden={false}>
         {/* Top bar */}
         <header className="topbar" role="banner">
@@ -229,51 +272,31 @@ export default function ChatPage() {
             onClick={() => setDrawerOpen(true)}
           >
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-              <path
-                d="M4 6h16M4 12h16M4 18h16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
+              <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
 
           <div className="title">GospelAI</div>
 
-          <button className="icon-btn" aria-label="Activity" title="Activity">
+          <button className="icon-btn" aria-label="New chat" title="New chat" onClick={createThread}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-              <circle
-                cx="12"
-                cy="12"
-                r="8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeDasharray="2 3"
-              />
+              <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
         </header>
 
         {/* Messages */}
-        <main className="chat" id="chat" role="main" aria-live="polite" ref={chatRef}>
-          {msgs.map((m, i) => (
+        <main className="chat" role="main" aria-live="polite" ref={chatRef}>
+          {activeThread?.messages.map((m, i) => (
             <div key={m.ts + "-" + i} className={`bubble ${m.role}`}>{m.content}</div>
           ))}
         </main>
 
         {/* Composer */}
         <form className="composer" autoComplete="off" onSubmit={onSubmit}>
-          <button className="circle-btn" type="button" title="Add" aria-label="Add">
+          <button className="circle-btn" type="button" title="New chat" aria-label="New chat" onClick={createThread}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-              <path
-                d="M12 5v14M5 12h14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
+              <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
 
@@ -283,8 +306,6 @@ export default function ChatPage() {
             className="input"
             placeholder="Message GospelAI…"
             inputMode="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -294,33 +315,17 @@ export default function ChatPage() {
           />
 
           <div className="trailing">
+            {/* voice placeholder */}
             <button className="circle-btn" type="button" title="Voice" aria-label="Voice">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                <path
-                  d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M5 12a7 7 0 0 0 14 0M12 19v3"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
+                <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3Z" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path d="M5 12a7 7 0 0 0 14 0M12 19v3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
 
             <button className="circle-btn send" type="submit" title="Send" aria-label="Send">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                <path
-                  d="M3 12h2m2 0h2m2-3v6m2-8v10m2-6h2m2 0h2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
+                <path d="M3 12h2m2 0h2m2-3v6m2-8v10m2-6h2m2 0h2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
