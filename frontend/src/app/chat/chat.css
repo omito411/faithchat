@@ -147,7 +147,7 @@
 /* ---------- Desktop nicety (center phone column) ---------- */
 @media (min-width: 560px){
   .fc-chat .app{
-    max-width: 430px;
+    max-width: 900px;
     margin: 0 auto;
     border-left: 1px solid #171923;
     border-right: 1px solid #171923;
