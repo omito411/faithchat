@@ -1,28 +1,25 @@
-# backend/routes/auth.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-import os, jwt
+import os, jwt, secrets
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Backend-issued JWT config
+# Existing values
 JWT_SECRET = os.getenv("JWT_SECRET", "change_me")
-JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "43200"))  # 30 days
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "43200"))  # login tokens
 
-# Supabase auth (Option B)
-# Get this from Supabase Dashboard → Settings → API → "JWT secret"
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+# NEW: short-lived reset token
+JWT_RESET_SECRET = os.getenv("JWT_RESET_SECRET", JWT_SECRET)
+JWT_RESET_EXPIRE_MINUTES = int(os.getenv("JWT_RESET_EXPIRE_MINUTES", "60"))
 
-JWT_ALGO = "HS256"
-# Allow a little clock skew so 'exp'/'iat' don't cause spurious failures
-JWT_LEEWAY = int(os.getenv("JWT_CLOCK_LEEWAY", "10"))
+# Where to send users to finish reset (your frontend)
+RESET_BASE_URL = os.getenv("RESET_BASE_URL", "https://gospelai.vercel.app/reset")
 
-# ---- Demo user store (replace with DB in prod) ----
-USERS = {}
+# In-memory user store for demo
+USERS = {}  # { email: bcrypt_hash }
 
 class RegisterInput(BaseModel):
     email: EmailStr
@@ -32,14 +29,34 @@ class LoginInput(BaseModel):
     email: EmailStr
     password: str
 
-def create_token(email: str) -> str:
+# NEW
+class ForgotInput(BaseModel):
+    email: EmailStr
+
+class ResetInput(BaseModel):
+    token: str
+    new_password: str
+
+def create_token(email: str):
     now = datetime.now(timezone.utc)
     payload = {
         "sub": email,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=JWT_EXPIRE_MINUTES)).timestamp()),
+        "exp": int((now + timedelta(minutes=JWT_EXPIRE_MINUTES)).timestamp())
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+# NEW: short-lived reset token
+def create_reset_token(email: str):
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": email,
+        "typ": "pwreset",
+        "jti": secrets.token_urlsafe(8),  # unique id (handy if you later blacklist)
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=JWT_RESET_EXPIRE_MINUTES)).timestamp()),
+    }
+    return jwt.encode(payload, JWT_RESET_SECRET, algorithm="HS256")
 
 @router.post("/register")
 def register(data: RegisterInput):
@@ -57,47 +74,42 @@ def login(data: LoginInput):
     token = create_token(data.email)
     return {"token": token}
 
-# ---- Token validation (accept backend JWT or Supabase access token) ----
+# NEW: request a password reset link
+@router.post("/forgot")
+def forgot(data: ForgotInput):
+    # Always respond 200 to avoid revealing whether the email exists
+    exists = data.email in USERS
+    if exists:
+        token = create_reset_token(data.email)
+        reset_url = f"{RESET_BASE_URL}?token={token}"
 
-def _decode(token: str, secret: str) -> dict:
-    # Supabase tokens often set aud="authenticated" and don't require audience check here.
-    return jwt.decode(
-        token,
-        secret,
-        algorithms=[JWT_ALGO],
-        options={"verify_aud": False},
-        leeway=JWT_LEEWAY,
-    )
+        # DEV: simulate sending email
+        print(f"[DEV] Password reset link for {data.email}: {reset_url}")
 
-def _extract_identity(claims: dict) -> Optional[str]:
-    # Prefer email if present; fall back to sub
-    return claims.get("email") or claims.get("sub")
+        # Optionally return the link in dev to make testing easy
+        if os.getenv("ENV", "dev") != "prod":
+            return {"ok": True, "message": "If this email exists, a reset link was sent.", "reset_url": reset_url}
 
-def require_user(token: Optional[str]) -> str:
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing token")
+    return {"ok": True, "message": "If this email exists, a reset link was sent."}
 
-    # 1) Try backend-issued JWT
+# NEW: complete the reset with token + new password
+@router.post("/reset")
+def reset(data: ResetInput):
     try:
-        claims = _decode(token, JWT_SECRET)
-        ident = _extract_identity(claims)
-        if ident:
-            return ident
+        claims = jwt.decode(data.token, JWT_RESET_SECRET, algorithms=["HS256"])
+        if claims.get("typ") != "pwreset":
+            raise Exception("Invalid token type")
+        email = claims["sub"]
     except Exception:
-        pass  # fall through to Supabase check
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    # 2) Try Supabase access token (if configured)
-    if SUPABASE_JWT_SECRET:
-        try:
-            claims = _decode(token, SUPABASE_JWT_SECRET)
-            ident = _extract_identity(claims)
-            if ident:
-                return ident
-            # If no email/sub, treat as invalid
-            raise HTTPException(status_code=401, detail="Invalid token (no subject/email)")
-        except Exception as e:
-            # Surface why it failed (helps when debugging Railway logs)
-            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    if email not in USERS:
+        # For uniformity; don't leak existence
+        return {"ok": True}
 
-    # Neither secret worked
-    raise HTTPException(status_code=401, detail="Invalid token")
+    # Basic password checks (tweak as you like)
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    USERS[email] = pwd_context.hash(data.new_password)
+    return {"ok": True, "message": "Password updated"}
