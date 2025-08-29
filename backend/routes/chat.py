@@ -22,8 +22,8 @@ SYSTEM_PROMPT = (
   "- Use exactly these sections, in this order:\n"
   "  1) BIBLE VERSE (KJV): one or two relevant verses. Each verse in its own paragraph.\n"
   "  2) EXPLANATION (modern language): 2–4 short paragraphs.\n"
-  "  3) CLASSIC CHRISTIAN INSIGHT (optional): one short line or '—'.\n"
-  "  4) SUMMARY: one short paragraph that ties it together.\n"
+  "  3) CLASSIC CHRISTIAN INSIGHT (optional): one short line or '—'."
+
 )
 
 

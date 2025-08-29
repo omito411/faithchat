@@ -74,16 +74,22 @@
   overflow-y: auto;
   scrollbar-width: thin;
 }
+
 .fc-chat .bubble{
   max-width: 88%;
   width: fit-content;
   margin: 8px 0;
   padding: 12px 14px;
-  line-height: 1.45;
-  font-size: 15.5px;
+  line-height: 1.6;         /* readability */
+  font-size: 16px;          /* small bump */
   border-radius: 18px;
   box-shadow: var(--shadow-1);
+
+  /* Preserve author formatting so verses/explanations appear in separate paragraphs */
+  white-space: pre-wrap;     /* keep \n and wrap long lines */
+  word-break: break-word;    /* prevent overflow on long references */
 }
+
 .fc-chat .bubble.ai{
   background: var(--bubble-ai);
   color: var(--ink);
@@ -142,12 +148,13 @@
 .fc-chat .send{
   background: var(--accent);
   border-color: transparent;
+  color: #fff;
 }
 
 /* ---------- Desktop nicety (center phone column) ---------- */
 @media (min-width: 560px){
   .fc-chat .app{
-    max-width: 900px;
+    max-width: 900px;          /* wider column on desktop */
     margin: 0 auto;
     border-left: 1px solid #171923;
     border-right: 1px solid #171923;
