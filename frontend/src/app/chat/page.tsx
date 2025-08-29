@@ -329,8 +329,8 @@ export default function ChatPage() {
             </button>
 
             <button className="circle-btn send" type="submit" title="Send" aria-label="Send">
-              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                <path d="M3 12h2m2 0h2m2-3v6m2-8v10m2-6h2m2 0h2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+               <path d="M2 21L23 12 2 3v7l14 2-14 2v7z"/>
               </svg>
             </button>
           </div>
