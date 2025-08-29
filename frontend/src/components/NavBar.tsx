@@ -17,7 +17,8 @@ export default function NavBar() {
     return () => document.body.classList.remove("nav-open");
   }, [open]);
 
-  // close menu when resizing to desktop
+  // close on route change / resize to desktop
+  useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     const onResize = () => { if (window.innerWidth > 760) setOpen(false); };
     window.addEventListener("resize", onResize);
@@ -25,9 +26,7 @@ export default function NavBar() {
   }, []);
 
   const isActive = (href: string) =>
-    href === "/"
-      ? pathname === "/"
-      : pathname?.startsWith(href);
+    href === "/" ? pathname === "/" : pathname?.startsWith(href);
 
   return (
     <header className="fc-navbar">
@@ -35,37 +34,28 @@ export default function NavBar() {
         {/* Brand */}
         <Link className="fc-brand" href="/">
           <img className="fc-brand-logo" src="/assets/faithchat-logo.png" alt="FaithChat AI logo" />
-          <span className="fc-brand-text">FaithChat AI</span>
+          <span className="fc-brand-text">Gospel AI</span>
         </Link>
 
-        {/* Burger */}
+        {/* Burger (mobile) */}
         <button
           className="fc-burger"
           aria-label="Toggle menu"
           aria-expanded={open}
           aria-controls="fc-nav"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(v => !v)}
         >
           <span></span><span></span><span></span>
         </button>
 
         {/* Links */}
-        <nav
-          id="fc-nav"
-          className={`fc-links${open ? " open" : ""}`}
-          aria-label="Primary"
-          onClick={() => setOpen(false)} // close on any link click
-        >
+        <nav id="fc-nav" className={`fc-links${open ? " open" : ""}`} aria-label="Primary">
           <Link href="/" className={isActive("/") ? "active" : ""}>Home</Link>
           <Link href="/chat" className={isActive("/chat") ? "active" : ""}>Chat</Link>
           <Link href="/donate" className={isActive("/donate") ? "active" : ""}>Donate</Link>
 
           {token ? (
-            // same style as Login; rendered as link for consistent look
-            <a
-              href="#"
-              onClick={(e) => { e.preventDefault(); signOut(); }}
-            >
+            <a href="#" onClick={(e) => { e.preventDefault(); setOpen(false); signOut(); }}>
               Sign out
             </a>
           ) : (

@@ -1,7 +1,7 @@
 // app/donate/page.tsx
 import "./donate.css";
 
-export const metadata = { title: "Donate • FaithChat AI" };
+export const metadata = { title: "Donate • Gospel AI" };
 
 export default function DonatePage() {
   return (
@@ -9,10 +9,10 @@ export default function DonatePage() {
       <section className="hero">
         <div className="fc-container hero-grid">
           <div className="hero-copy">
-            <h1>FaithChat AI</h1>
+            <h1>Gospel AI</h1>
             <p>
-              FaithChat AI’s mission is to help people deepen their relationship with God every day.
-              We give clear, Bible-based answers (NKJV only) with Spurgeon insights when helpful.
+              Gospel AI’s mission is to help people deepen their relationship with God every day.
+              We give clear, Bible-based answers (KJV only) with Spurgeon insights.
             </p>
             <a
               className="btn btn-primary"
@@ -35,7 +35,7 @@ export default function DonatePage() {
 
       <footer className="fc-footer">
         <div className="fc-container">
-          © {new Date().getFullYear()} FaithChat AI • Built to help people grow in faith.
+          © {new Date().getFullYear()} Gospel AI • Built to help people grow in faith.
         </div>
       </footer>
     </main>

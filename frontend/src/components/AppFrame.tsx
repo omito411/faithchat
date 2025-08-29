@@ -9,7 +9,7 @@ export default function AppFrame({ children }: { children: ReactNode }) {
     <>
       <NavBar />
       <main>{children}</main>
-      <Footer />
+      
     </>
   );
 }
