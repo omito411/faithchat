@@ -1,47 +1,43 @@
-import Link from "next/link";
-import styles from "./donate.module.css";
+// app/donate/page.tsx
+import "./donate.css";
 
-export const metadata = { title: "Donate – Gospel AI" };
+export const metadata = { title: "Donate • FaithChat AI" };
 
 export default function DonatePage() {
   return (
-    <div className={styles.page}>
-      {/* Local (scoped) navbar just for the donate route */}
-      <header className={styles.navbar}>
-        <div className={styles.navContainer}>
-          <Link href="/" className={styles.logo}>
-            {/* Put /public/logo.png in your project root */}
-            <img src="/assets/logo.png" alt="Gospel AI logo" />
-            <span>Gospel AI</span>
-          </Link>
+    <main className="donate">
+      <section className="hero">
+        <div className="fc-container hero-grid">
+          <div className="hero-copy">
+            <h1>FaithChat AI</h1>
+            <p>
+              FaithChat AI’s mission is to help people deepen their relationship with God every day.
+              We give clear, Bible-based answers (NKJV only) with Spurgeon insights when helpful.
+            </p>
+            <a
+              className="btn btn-primary"
+              href="https://your-giving-link.example" // replace with real link
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Give here
+            </a>
+          </div>
 
-          <nav className={styles.navLinks} aria-label="Primary">
-            <Link href="/">Home</Link>
-            <Link href="/chat">Chat</Link>
-            <Link href="/donate" className={styles.active}>Donate</Link>
-            <Link href="/login">Login</Link>
-          </nav>
-        </div>
-      </header>
-
-      {/* Hero / donate pitch */}
-      <section className={styles.hero}>
-        <div className={styles.heroText}>
-          <h1>FaithChat AI</h1>
-          <p>
-            FaithChat AI’s mission is to help people deepen their relationship with God every day.
-            We aim to encourage and challenge you to seek God with clear, Bible-based answers
-            (NKJV only) and Spurgeon insights when helpful.
-          </p>
-          {/* TODO: point this to your real checkout URL (Stripe/Donorbox/etc.) */}
-          <a href="/donate" className={styles.btnPrimary}>Give here</a>
-        </div>
-
-        <div className={styles.heroImage}>
-          {/* Put /public/donate-illustration.png */}
-          <img src="/assests/donate-illustration.png" alt="Group reading the Bible" />
+          <div className="hero-art">
+            <img
+              src="/assets/donate-illustration.png"
+              alt="Small group discussing Scripture with an open Bible"
+            />
+          </div>
         </div>
       </section>
-    </div>
+
+      <footer className="fc-footer">
+        <div className="fc-container">
+          © {new Date().getFullYear()} FaithChat AI • Built to help people grow in faith.
+        </div>
+      </footer>
+    </main>
   );
 }
