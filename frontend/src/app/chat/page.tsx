@@ -100,7 +100,7 @@ export default function ChatPage() {
     t.messages.push({
       role: "ai",
       content:
-        "Hi! Ask anything about faith, life, or the Bible (KJV). I’ll answer clearly and pastorally.",
+        "Hi! Ask anything about faith, life, or the Bible (KJV). I’ll answer clearly in line with the scriptures.",
       ts: Date.now(),
     });
     return t;
