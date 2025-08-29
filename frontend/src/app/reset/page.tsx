@@ -1,10 +1,11 @@
+// app/reset/page.tsx
 "use client";
 
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
-import "../login/login.css"; // reuse scoped look
+import "../login/login.css"; // reuse the scoped auth styles
 
-export default function ResetPage() {
+function ResetInner() {
   const sp = useSearchParams();
   const token = sp.get("token") || "";
   const [password, setPw] = useState("");
@@ -32,38 +33,44 @@ export default function ResetPage() {
   }
 
   return (
-    <div className="login-scope">
-      <main className="auth-full">
-        <section className="auth-wrap" aria-label="Reset password">
-          <h1 className="auth-title">Set a new password</h1>
+    <main className="auth-full">
+      <section className="auth-wrap" aria-label="Reset password">
+        <h1 className="auth-title">Set a new password</h1>
 
-          {ok ? (
-            <>
-              <p style={{ textAlign: "center", color: "var(--ink-dim)" }}>
-                Your password has been updated. You can now sign in.
-              </p>
-              <a className="btn primary" href="/login" style={{ marginTop: 12, display: "inline-flex" }}>
-                Go to Login
-              </a>
-            </>
-          ) : (
-            <form className="auth-form" onSubmit={onSubmit} noValidate>
-              <label className="auth-label" htmlFor="password">New password</label>
-              <input
-                className="auth-input"
-                id="password"
-                type="password"
-                placeholder="Choose a strong password"
-                value={password}
-                onChange={(e) => setPw(e.target.value)}
-                required
-              />
-              {err && <p className="error-text" role="alert">{err}</p>}
-              <button className="btn primary" type="submit">Update password</button>
-            </form>
-          )}
-        </section>
-      </main>
-    </div>
+        {ok ? (
+          <>
+            <p style={{ textAlign: "center", color: "var(--ink-dim)" }}>
+              Your password has been updated. You can now sign in.
+            </p>
+            <a className="btn btn-primary" href="/login" style={{ marginTop: 12, display: "inline-flex" }}>
+              Go to Login
+            </a>
+          </>
+        ) : (
+          <form className="auth-form" onSubmit={onSubmit} noValidate>
+            <label className="auth-label" htmlFor="password">New password</label>
+            <input
+              className="auth-input"
+              id="password"
+              type="password"
+              placeholder="Choose a strong password"
+              value={password}
+              onChange={(e) => setPw(e.target.value)}
+              required
+            />
+            {err && <p className="error-text" role="alert">{err}</p>}
+            <button className="btn btn-primary" type="submit">Update password</button>
+          </form>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<main className="auth-full"><section className="auth-wrap"><p>Loading…</p></section></main>}>
+      <ResetInner />
+    </Suspense>
   );
 }
