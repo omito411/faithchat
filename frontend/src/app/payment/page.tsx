@@ -75,7 +75,6 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
     });
 
     if (error) {
-      // Display last error on the form (Stripe handles most UI)
       setMessage(error.message ?? "Something went wrong.");
     }
 
@@ -84,7 +83,6 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {/* Apple Pay (Safari), Google Pay (Chrome/Android), and Card appear automatically */}
       <PaymentElement options={{ layout: "tabs" }} />
       <button
         disabled={!stripe || loading}
@@ -107,12 +105,11 @@ export default function PaymentPage() {
   const [loadingPI, setLoadingPI] = useState(false);
   const [errorPI, setErrorPI] = useState<string | null>(null);
 
-  // Build typed Elements options (fixes TS: appearance.theme literal)
   const elementsOptions: StripeElementsOptions | undefined = useMemo(() => {
     if (!clientSecret) return undefined;
     return {
       clientSecret,
-      appearance: { theme: "night" }, // literal type OK
+      appearance: { theme: "night" },
     };
   }, [clientSecret]);
 
@@ -123,14 +120,12 @@ export default function PaymentPage() {
         setLoadingPI(true);
         setErrorPI(null);
 
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/donate/create-intent`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ amount_eur: amount }),
-          }
-        );
+        // 👇 Use proxy API route instead of process.env directly
+        const res = await fetch("/api/donate/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount_eur: amount }),
+        });
 
         if (!res.ok) {
           const text = await res.text();
