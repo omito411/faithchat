@@ -1,8 +1,11 @@
+# app.py / main.py
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.auth import router as auth_router
 from routes.chat import router as chat_router
+from routes.donations import router as donations_router      # ⬅️ NEW
+from routes.stripe_webhook import router as stripe_hook_router  # ⬅️ NEW
 
 app = FastAPI(title="FaithChat API", version="0.1.0")
 
@@ -23,6 +26,8 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(chat_router, prefix="/chat", tags=["chat"])
+app.include_router(donations_router, tags=["donations"])          # ⬅️ NEW
+app.include_router(stripe_hook_router, tags=["webhooks"])         # ⬅️ NEW
 
 @app.get("/health")
 def health():
