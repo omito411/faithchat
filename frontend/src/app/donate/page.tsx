@@ -16,9 +16,7 @@ export default function DonatePage() {
             </p>
             <a
               className="btn btn-primary"
-              href="https://your-giving-link.example" // replace with real link
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/payment" // ⬅️ now points to your new payment page
             >
               Give here
             </a>

@@ -8,3 +8,5 @@ openai>=1.0.0
 httpx
 starlette
 pyjwt
+stripe>=10
+python-dotenv>=1.0
