@@ -1,4 +1,3 @@
-// app/payment/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,93 +5,137 @@ import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
-  useStripe,
   useElements,
+  useStripe,
 } from "@stripe/react-stripe-js";
 import type { StripeElementsOptions } from "@stripe/stripe-js";
+import "./payment.css";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
-function AmountPicker({
+function AmountChips({
   amount,
-  setAmount,
+  onPick,
 }: {
   amount: number;
-  setAmount: (v: number) => void;
+  onPick: (n: number) => void;
 }) {
   const presets = [5, 10, 20, 50];
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        {presets.map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setAmount(v)}
-            className={`px-3 py-2 rounded-xl border ${
-              amount === v ? "border-white" : "border-white/20"
-            }`}
-          >
-            €{v}
-          </button>
-        ))}
-      </div>
-      <div>
-        <label className="text-sm opacity-80">Custom amount (€)</label>
-        <input
-          type="number"
-          min={1}
-          step="1"
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className="mt-1 w-full bg-transparent border border-white/20 rounded-xl px-3 py-2"
-        />
-      </div>
+    <div className="chips" role="group" aria-label="Quick amounts">
+      {presets.map((v) => (
+        <button
+          key={v}
+          type="button"
+          data-amount={v}
+          className={`chip ${amount === v ? "active" : ""}`}
+          onClick={() => onPick(v)}
+        >
+          €{v}
+        </button>
+      ))}
     </div>
   );
 }
 
-function CheckoutForm({ clientSecret }: { clientSecret: string }) {
+function CheckoutForm({
+  clientSecret,
+  amount,
+}: {
+  clientSecret: string;
+  amount: number;
+}) {
   const stripe = useStripe();
   const elements = useElements();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [coverFees, setCoverFees] = useState(false);
+  const [msg, setMsg] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!stripe || !elements) return;
 
     setLoading(true);
-    setMessage(null);
+    setMsg("");
+
+    // Optional: you can adjust the amount on your server if `coverFees` is true.
+    // This UI toggle is just informative for now.
 
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/payment/success`,
+        receipt_email: email || undefined,
+        payment_method_data: {
+          billing_details: {
+            name: name || undefined,
+            email: email || undefined,
+          },
+        },
       },
     });
 
-    if (error) {
-      setMessage(error.message ?? "Something went wrong.");
-    }
-
+    if (error) setMsg(error.message ?? "Something went wrong.");
     setLoading(false);
-  };
+  }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <PaymentElement options={{ layout: "tabs" }} />
-      <button
-        disabled={!stripe || loading}
-        className="w-full rounded-xl py-3 font-semibold bg-neutral-900 text-white disabled:opacity-50"
-      >
-        {loading ? "Processing…" : "Donate"}
+    <form className="pay-form" onSubmit={onSubmit} noValidate>
+      <div className="row two">
+        <div>
+          <label className="label" htmlFor="donorName">
+            Name on card
+          </label>
+          <input
+            id="donorName"
+            className="input"
+            placeholder="Your name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="donorEmail">
+            Email
+          </label>
+          <input
+            id="donorEmail"
+            className="input"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+
+      <label className="cover">
+        <input
+          type="checkbox"
+          checked={coverFees}
+          onChange={(e) => setCoverFees(e.target.checked)}
+        />
+        <span>Cover card fees (help us receive the full amount)</span>
+      </label>
+
+      <button className="btn btn-primary" disabled={!stripe || loading}>
+        {loading ? "Processing…" : `Donate €${amount}`}
       </button>
-      {message && (
-        <p className="text-sm text-red-400" role="alert">
-          {message}
+
+      {msg && (
+        <p id="msg" className="msg" role="alert">
+          {msg}
         </p>
       )}
     </form>
@@ -102,76 +145,135 @@ function CheckoutForm({ clientSecret }: { clientSecret: string }) {
 export default function PaymentPage() {
   const [amount, setAmount] = useState(20);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [loadingPI, setLoadingPI] = useState(false);
   const [errorPI, setErrorPI] = useState<string | null>(null);
+  const [loadingPI, setLoadingPI] = useState(false);
+  const [freq, setFreq] = useState<"once" | "monthly">("once");
 
-  const elementsOptions: StripeElementsOptions | undefined = useMemo(() => {
-    if (!clientSecret) return undefined;
-    return {
-      clientSecret,
-      appearance: { theme: "night" },
-    };
-  }, [clientSecret]);
-
+  // Initialize/refresh the PaymentIntent when amount changes
   useEffect(() => {
     let cancelled = false;
-    const createIntent = async () => {
+
+    (async () => {
       try {
         setLoadingPI(true);
         setErrorPI(null);
 
-        // 👇 Use proxy API route instead of process.env directly
         const res = await fetch("/api/donate/create-intent", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount_eur: amount }),
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ amount_eur: amount, frequency: freq }),
         });
 
         if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `HTTP ${res.status}`);
+          throw new Error((await res.text()) || `HTTP ${res.status}`);
         }
 
         const data = (await res.json()) as { clientSecret: string };
         if (!cancelled) setClientSecret(data.clientSecret);
       } catch (err: any) {
         if (!cancelled)
-          setErrorPI(
-            err?.message || "Could not initialize payment. Please try again."
-          );
+          setErrorPI(err?.message || "Could not initialize checkout.");
       } finally {
         if (!cancelled) setLoadingPI(false);
       }
-    };
+    })();
 
-    createIntent();
     return () => {
       cancelled = true;
     };
-  }, [amount]);
+  }, [amount, freq]);
+
+  // Stripe Elements options (only when we have a clientSecret)
+  const elementsOptions: StripeElementsOptions | undefined = useMemo(() => {
+    if (!clientSecret) return undefined;
+    return { clientSecret, appearance: { theme: "night" } };
+  }, [clientSecret]);
+
+  // Handle chips + custom amount input
+  const onPick = (n: number) => setAmount(n);
+  const onCustomAmount = (v: string) => {
+    const val = Number(String(v).replace(",", "."));
+    if (!Number.isNaN(val)) setAmount(Math.max(1, Math.floor(val)));
+  };
 
   return (
-    <div className="px-4 py-8 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Support the mission</h1>
-      <p className="text-sm opacity-80 mb-6">
-        Give securely with Apple/Google Pay or card.
-      </p>
+    <div className="pay-scope">
+      <main className="donate">
+        <div className="fc-container grid">
+          {/* Intro */}
+          <section className="intro">
+            <h1>Support the mission</h1>
+            <p className="lede">
+              Give securely with Apple/Google Pay or card. Your gift helps us
+              serve clear, Bible-based answers (NKJV only) and Christ-centred
+              resources to more people.
+            </p>
 
-      <AmountPicker amount={amount} setAmount={setAmount} />
-      <div className="h-6" />
+            {/* Amount + frequency selectors */}
+            <div className="row">
+              <label className="label">Amount</label>
+              <AmountChips amount={amount} onPick={onPick} />
+              <div className="amount-wrap">
+                <span className="currency">€</span>
+                <input
+                  id="amount"
+                  inputMode="decimal"
+                  placeholder="Custom amount"
+                  aria-label="Custom amount in euros"
+                  value={amount}
+                  onChange={(e) => onCustomAmount(e.target.value)}
+                />
+              </div>
+            </div>
 
-      {loadingPI && <p className="opacity-70 text-sm">Preparing checkout…</p>}
-      {errorPI && (
-        <p className="text-sm text-red-400 mb-4" role="alert">
-          {errorPI}
+            <div className="row">
+              <span className="label">Frequency</span>
+              <div className="seg" role="tablist" aria-label="Donation frequency">
+                <input
+                  type="radio"
+                  id="once"
+                  name="freq"
+                  value="once"
+                  checked={freq === "once"}
+                  onChange={() => setFreq("once")}
+                />
+                <label htmlFor="once">One-time</label>
+
+                <input
+                  type="radio"
+                  id="monthly"
+                  name="freq"
+                  value="monthly"
+                  checked={freq === "monthly"}
+                  onChange={() => setFreq("monthly")}
+                />
+                <label htmlFor="monthly">Monthly</label>
+              </div>
+            </div>
+          </section>
+
+          {/* Payment card */}
+          <section className="pay-card" aria-label="Donation form">
+            {loadingPI && <p className="msg">Preparing checkout…</p>}
+            {errorPI && (
+              <p className="msg" role="alert">
+                {errorPI}
+              </p>
+            )}
+
+            {elementsOptions && clientSecret && (
+              <Elements stripe={stripePromise} options={elementsOptions}>
+                <CheckoutForm clientSecret={clientSecret} amount={amount} />
+              </Elements>
+            )}
+          </section>
+        </div>
+
+        <p className="site-note">
+          Built with ❤️ · NKJV Scripture references only · Spurgeon quotes when
+          helpful
         </p>
-      )}
-
-      {elementsOptions && (
-        <Elements stripe={stripePromise} options={elementsOptions}>
-          <CheckoutForm clientSecret={clientSecret!} />
-        </Elements>
-      )}
+      </main>
     </div>
   );
 }
